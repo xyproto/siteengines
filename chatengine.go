@@ -5,8 +5,9 @@ import (
 	"time"
 
 	. "github.com/xyproto/browserspeak"
+	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
-	. "github.com/xyproto/simpleredis"
+	"github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"
 )
 
@@ -19,18 +20,18 @@ type ChatEngine struct {
 }
 
 type ChatState struct {
-	active   *RedisSet       // A list of all users that are in the chat, must correspond to the users in UserState.users
-	said     *RedisList      // A list of everything that has been said so far
-	userInfo *RedisHashMap   // Info about a chat user - last seen, preferred number of lines etc
-	pool     *ConnectionPool // A connection pool for Redis
+	active   *simpleredis.Set            // A list of all users that are in the chat, must correspond to the users in UserState.users
+	said     *simpleredis.List           // A list of everything that has been said so far
+	userInfo *simpleredis.HashMap        // Info about a chat user - last seen, preferred number of lines etc
+	pool     *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
 func NewChatEngine(userState *UserState) *ChatEngine {
 	pool := userState.GetPool()
 	chatState := new(ChatState)
-	chatState.active = NewRedisSet(pool, "active")
-	chatState.said = NewRedisList(pool, "said")
-	chatState.userInfo = NewRedisHashMap(pool, "userInfo") // lastSeen.time is an encoded timestamp for when the user was last seen chatting
+	chatState.active = simpleredis.NewSet(pool, "active")
+	chatState.said = simpleredis.NewList(pool, "said")
+	chatState.userInfo = simpleredis.NewHashMap(pool, "userInfo") // lastSeen.time is an encoded timestamp for when the user was last seen chatting
 	chatState.pool = pool
 	return &ChatEngine{userState, chatState}
 }

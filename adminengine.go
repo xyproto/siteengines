@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	. "github.com/xyproto/browserspeak"
+	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/web"
 )
@@ -17,14 +18,6 @@ type AdminEngine struct {
 
 func NewAdminEngine(state *UserState) *AdminEngine {
 	return &AdminEngine{state}
-}
-
-// Checks if the current user is logged in as Administrator right now
-func (state *UserState) AdminRights(ctx *web.Context) bool {
-	if username := GetBrowserUsername(ctx); username != "" {
-		return state.IsLoggedIn(username) && state.IsAdministrator(username)
-	}
-	return false
 }
 
 func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
@@ -59,7 +52,7 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 		s += "<tr>"
 		s += "<th>Username</th><th>Confirmed</th><th>Logged in</th><th>Administrator</th><th>Admin toggle</th><th>Remove user</th><th>Email</th><th>Password hash</th>"
 		s += "</tr>"
-		usernames, err := state.usernames.GetAll()
+		usernames, err := state.GetAllUsernames()
 		if err == nil {
 			for rownr, username := range usernames {
 				if rownr%2 == 0 {
@@ -74,11 +67,11 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 				s += "<td><a class=\"darkgrey\" href=\"/admintoggle/" + username + "\">admin toggle</a></td>"
 				// TODO: Ask for confirmation first with a instapage.MessageOKurl("blabla", "blabla", "/actually/remove/stuff")
 				s += "<td><a class=\"careful\" href=\"/remove/" + username + "\">remove</a></td>"
-				email, err := state.users.Get(username, "email")
+				email, err := state.GetEmail(username)
 				if err == nil {
 					s += "<td>" + email + "</td>"
 				}
-				passwordHash, err := state.users.Get(username, "password")
+				passwordHash, err := state.GetPasswordHash(username)
 				if err == nil {
 					if strings.HasPrefix(passwordHash, "abc123") {
 						s += "<td>" + passwordHash + " (<a href=\"/fixpassword/" + username + "\">fix</a>)</td>"
@@ -96,12 +89,15 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 		s += "<tr>"
 		s += "<th>Username</th><th>Confirmation link</th><th>Remove</th>"
 		s += "</tr>"
-		usernames, err = state.unconfirmed.GetAll()
+		usernames, err = state.GetAllUnconfirmedUsernames()
 		if err == nil {
 			for _, username := range usernames {
 				s += "<tr>"
 				s += "<td><a class=\"username\" href=\"/status/" + username + "\">" + username + "</a></td>"
-				confirmationCode := state.GetConfirmationCode(username)
+				confirmationCode, err := state.GetConfirmationCode(username)
+				if err != nil {
+					panic("ERROR: Could not get confirmation code")
+				}
 				s += "<td><a class=\"somewhatcareful\" href=\"/confirm/" + confirmationCode + "\">" + confirmationCode + "</a></td>"
 				s += "<td><a class=\"careful\" href=\"/removeunconfirmed/" + username + "\">remove</a></td>"
 				s += "</tr>"
@@ -110,18 +106,6 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 		s += "</table>"
 		return s
 	}
-}
-
-// Checks if the given username is an administrator
-func (state *UserState) IsAdministrator(username string) bool {
-	if !state.HasUser(username) {
-		return false
-	}
-	status, err := state.users.Get(username, "admin")
-	if err != nil {
-		return false
-	}
-	return TruthValue(status)
 }
 
 func GenerateStatusCurrentUser(state *UserState) SimpleContextHandle {
@@ -176,7 +160,7 @@ func GenerateRemoveUnconfirmedUser(state *UserState) WebHandle {
 		}
 
 		found := false
-		usernames, err := state.unconfirmed.GetAll()
+		usernames, err := state.GetAllUnconfirmedUsernames()
 		if err == nil {
 			for _, unconfirmedUsername := range usernames {
 				if username == unconfirmedUsername {
@@ -190,11 +174,8 @@ func GenerateRemoveUnconfirmedUser(state *UserState) WebHandle {
 			return instapage.MessageOKback("Remove unconfirmed user", "Can't find "+username+" in the list of unconfirmed users.")
 		}
 
-		// Remove the user
-		state.unconfirmed.Del(username)
-
-		// Remove additional data as well
-		state.users.Del(username, "confirmationCode")
+		// Mark as confirmed
+		state.RemoveUnconfirmed(username)
 
 		return instapage.MessageOKurl("Remove unconfirmed user", "OK, removed "+username+" from the list of unconfirmed users.", "/admin")
 	}
@@ -218,10 +199,7 @@ func GenerateRemoveUser(state *UserState) WebHandle {
 		}
 
 		// Remove the user
-		state.usernames.Del(username)
-
-		// Remove additional data as well
-		state.users.Del(username, "loggedin")
+		state.RemoveUser(username)
 
 		return instapage.MessageOKurl("Remove user", "OK, removed "+username, "/admin")
 	}
@@ -233,7 +211,7 @@ func GenerateAllUsernames(state *UserState) SimpleContextHandle {
 			return instapage.MessageOKback("List usernames", "Not logged in as Administrator")
 		}
 		s := ""
-		usernames, err := state.usernames.GetAll()
+		usernames, err := state.GetAllUsernames()
 		if err == nil {
 			for _, username := range usernames {
 				s += username + "<br />"
@@ -287,10 +265,10 @@ func GenerateToggleAdmin(state *UserState) WebHandle {
 			return instapage.MessageOKback("Admin toggle", "Can't remove admin rights from the admin user")
 		}
 		if !state.IsAdministrator(username) {
-			state.users.Set(username, "admin", "true")
+			state.SetAdminStatus(username)
 			return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now an admin", "/admin")
 		}
-		state.users.Set(username, "admin", "false")
+		state.RemoveAdminStatus(username)
 		return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now a regular user", "/admin")
 	}
 }

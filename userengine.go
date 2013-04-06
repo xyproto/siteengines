@@ -6,15 +6,14 @@ package siteengine
 
 import (
 	"crypto/sha256"
-	"errors"
 	"io"
 	"math/rand"
 	"strings"
 	"time"
 
 	. "github.com/xyproto/browserspeak"
+	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
-	. "github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"
 )
 
@@ -30,7 +29,7 @@ type UserEngine struct {
 	state *UserState
 }
 
-func NewUserEngine(pool *ConnectionPool) *UserEngine {
+func NewUserEngine(userState *UserState) *UserEngine {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
@@ -38,107 +37,35 @@ func NewUserEngine(pool *ConnectionPool) *UserEngine {
 
 	rand.Seed(time.Now().UnixNano())
 
-	userState := createUserState(pool)
 	return &UserEngine{userState}
-}
-
-func (state *UserState) GetPool() *ConnectionPool {
-	return state.pool
 }
 
 func (ue *UserEngine) GetState() *UserState {
 	return ue.state
 }
 
-// Checks if the current user is logged in as a user right now
-func (state *UserState) UserRights(ctx *web.Context) bool {
-	if username := GetBrowserUsername(ctx); username != "" {
-		return state.IsLoggedIn(username)
-	}
-	return false
-}
-
-func (state *UserState) HasUser(username string) bool {
-	val, err := state.usernames.Has(username)
-	if err != nil {
-		// This happened at concurrent connections before introducing the connection pool
-		panic("ERROR: Lost connection to Redis?")
-	}
-	return val
-}
-
-// Creates a user without doing ANY checks
-func AddUserUnchecked(state *UserState, username, password, email string) {
-	// Add the user
-	state.usernames.Add(username)
-
-	// Add password and email
-	state.users.Set(username, "password", password)
-	state.users.Set(username, "email", email)
-
-	// Addditional fields
-	additionalfields := []string{"loggedin", "confirmed", "admin"}
-	for _, fieldname := range additionalfields {
-		state.users.Set(username, fieldname, "false")
-	}
-}
-
-func (state *UserState) GetBooleanField(username, fieldname string) bool {
-	hasUser := state.HasUser(username)
-	if !hasUser {
-		return false
-	}
-	chatting, err := state.users.Get(username, fieldname)
-	if err != nil {
-		return false
-	}
-	return TruthValue(chatting)
-}
-
-func (state *UserState) SetBooleanField(username, fieldname string, val bool) {
-	strval := "false"
-	if val {
-		strval = "true"
-	}
-	state.users.Set(username, fieldname, strval)
-}
-
-func (state *UserState) IsConfirmed(username string) bool {
-	return state.GetBooleanField(username, "confirmed")
-}
-
 func CorrectPassword(state *UserState, username, password string) bool {
-	hashedPassword, err := state.users.Get(username, "password")
+	passwordHash, err := state.GetPasswordHash(username)
 	if err != nil {
 		return false
 	}
-	if hashedPassword == HashPasswordVersion2(password) {
+	if passwordHash == HashPasswordVersion2(password) {
 		return true
 	}
 	return false
 }
 
-func (state *UserState) GetConfirmationCode(username string) string {
-	confirmationCode, err := state.users.Get(username, "confirmationCode")
-	if err != nil {
-		return ""
-	}
-	return confirmationCode
-}
-
 // Goes through all the confirmationCodes of all the unconfirmed users
 // and checks if this confirmationCode already is in use
 func AlreadyHasConfirmationCode(state *UserState, confirmationCode string) bool {
-	unconfirmedUsernames, err := state.unconfirmed.GetAll()
+	unconfirmedUsernames, err := state.GetAllUnconfirmedUsernames()
 	if err != nil {
 		return false
 	}
 	for _, aUsername := range unconfirmedUsernames {
-		aConfirmationCode, err := state.users.Get(aUsername, "confirmationCode")
+		aConfirmationCode, err := state.GetConfirmationCode(aUsername)
 		if err != nil {
-			// TODO: Consider just logging the incident instead
 			panic("ERROR: Inconsistent user")
-			//continue
 		}
 		if confirmationCode == aConfirmationCode {
 			// Found it
@@ -153,7 +80,7 @@ func GenerateConfirmUser(state *UserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		confirmationCode := val
 
-		unconfirmedUsernames, err := state.unconfirmed.GetAll()
+		unconfirmedUsernames, err := state.GetAllUnconfirmedUsernames()
 		if err != nil {
 			return instapage.MessageOKurl("Confirmation", "All users are confirmed already.", "/register")
 		}
@@ -161,12 +88,11 @@ func GenerateConfirmUser(state *UserState) WebHandle {
 		// Find the username by looking up the confirmationCode on unconfirmed users
 		username := ""
 		for _, aUsername := range unconfirmedUsernames {
-			aSecret, err := state.users.Get(aUsername, "confirmationCode")
+			aConfirmationCode, err := state.GetConfirmationCode(username)
 			if err != nil {
-				// TODO: Inconsistent user! Log this.
-				continue
+				panic("ERROR: Inconsistent user!")
 			}
-			if confirmationCode == aSecret {
+			if confirmationCode == aConfirmationCode {
 				// Found the right user
 				username = aUsername
 				break
@@ -184,12 +110,10 @@ func GenerateConfirmUser(state *UserState) WebHandle {
 		}
 
 		// Remove from the list of unconfirmed usernames
-		state.unconfirmed.Del(username)
-		// Remove the confirmationCode from the user
-		state.users.Del(username, "confirmationCode")
+		state.RemoveUnconfirmed(username)
 
 		// Mark user as confirmed
-		state.users.Set(username, "confirmed", "true")
+		state.MarkConfirmed(username)
 
 		return instapage.MessageOKurl("Confirmation", "Thank you "+username+", you can now log in.", "/login")
 	}
@@ -218,10 +142,9 @@ func GenerateLoginUser(state *UserState) WebHandle {
 		}
 
 		// Log in the user by changing the database and setting a secure cookie
-		state.users.Set(username, "loggedin", "true")
+		state.SetLoggedIn(username)
 
-		// TODO: Users should be able to select their own cookie timeout
-		state.SetBrowserUsername(ctx, username, 3600)
+		state.SetBrowserUsername(ctx, username)
 
 		// TODO: Use a welcoming messageOK where the user can see when he/she last logged in and from which host
 
@@ -313,14 +236,13 @@ func GenerateRegisterUser(state *UserState) WebHandle {
 		}
 
 		// Register the user
-		password := HashPasswordVersion2(password1)
-		AddUserUnchecked(state, username, password, email)
+		passwordHash := HashPasswordVersion2(password1)
+		state.AddUserUnchecked(username, passwordHash, email)
 
 		// Mark user as administrator if that is the case
 		if adminuser {
-			// This does not set the username to admin,
-			// but sets the admin field to true
-			state.users.Set(username, "admin", "true")
+			// Set admin status
+			state.SetAdminStatus(username)
 		}
 
 		// The confirmation code must be a minimum of 8 letters long
@@ -340,11 +262,9 @@ func GenerateRegisterUser(state *UserState) WebHandle {
 		ConfirmationEmail("archlinux.no", "https://archlinux.no/confirm/"+confirmationCode, username, email)
 
 		// Register the need to be confirmed
-		state.unconfirmed.Add(username)
-		state.users.Set(username, "confirmationCode", confirmationCode)
+		state.AddUnconfirmed(username, confirmationCode)
 
 		// Redirect
-		//ctx.SetHeader("Refresh", "0; url=/login", true)
 		return instapage.MessageOKurl("Registration complete", "Thanks for registering, the confirmation e-mail has been sent.", "/login")
 	}
 }
@@ -361,7 +281,7 @@ func GenerateLogoutCurrentUser(state *UserState) SimpleContextHandle {
 		}
 
 		// Log out the user by changing the database, the cookie can stay
-		state.users.Set(username, "loggedin", "false")
+		state.SetLoggedOut(username)
 
 		// Redirect
 		//ctx.SetHeader("Refresh", "0; url=/login", true)
@@ -369,53 +289,10 @@ func GenerateLogoutCurrentUser(state *UserState) SimpleContextHandle {
 	}
 }
 
-// Checks if the given username is logged in or not
-func (state *UserState) IsLoggedIn(username string) bool {
-	if !state.HasUser(username) {
-		return false
-	}
-	status, err := state.users.Get(username, "loggedin")
-	if err != nil {
-		// Returns "no" if the status can not be retrieved
-		return false
-	}
-	return TruthValue(status)
-}
-
-// Gets the username that is stored in a cookie in the browser, if available
-func GetBrowserUsername(ctx *web.Context) string {
-	username, _ := ctx.GetSecureCookie("user")
-	// TODO: Return err, then the calling function should notify the user that cookies are needed
-	return username
-}
-
-func (state *UserState) SetBrowserUsername(ctx *web.Context, username string, timeout int64) error {
-	if username == "" {
-		return errors.New("Can't set cookie for empty username")
-	}
-	if !state.HasUser(username) {
-		return errors.New("Can't store cookie for non-existsing user")
-	}
-	// Create a cookie that lasts for a while ("timeout" seconds),
-	// this is the equivivalent of a session for a given username.
-	ctx.SetSecureCookiePath("user", username, timeout, "/")
-	return nil
-}
-
 func GenerateNoJavascriptMessage() SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		return instapage.MessageOKback("JavaScript error", "Cookies and Javascriåt must be enabled.<br />Older browsers might be supported in the future.")
 	}
-}
-
-func createUserState(pool *ConnectionPool) *UserState {
-	// For the database
-	state := new(UserState)
-	state.users = NewRedisHashMap(pool, "users")
-	state.usernames = NewRedisSet(pool, "usernames")
-	state.unconfirmed = NewRedisSet(pool, "unconfirmed")
-	state.pool = pool
-	return state
 }
 
 func LoginCP(basecp BaseCP, state *UserState, url string) *ContentPage {
