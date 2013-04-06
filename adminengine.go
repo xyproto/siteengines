@@ -1,6 +1,4 @@
-package genericsite
-
-// OK, only admin stuff, 23-03-13
+package siteengine
 
 import (
 	"strconv"

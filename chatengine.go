@@ -1,4 +1,4 @@
-package main
+package siteengine
 
 import (
 	"strconv"
