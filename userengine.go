@@ -1,4 +1,4 @@
-package siteengine
+package siteengines
 
 // TODO: Check for the visual likeness of two usernames when checking for availability! Generate images and compare pixels.
 // TODO: Logging in should work case sensitively, or at least without concern for the case of the first letter
