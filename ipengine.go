@@ -65,6 +65,7 @@ func (ie *IPEngine) GenerateGetLastIP() SimpleWebHandle {
 }
 
 func (ie *IPEngine) ServePages() {
+	// TODO: REST service instead
 	web.Get("/setip/(.*)", ie.GenerateSetIP())
 	web.Get("/getip/(.*)", ie.GenerateGetLastIP())
 	web.Get("/getallips/(.*)", ie.GenerateGetAllIPs())
