@@ -325,7 +325,7 @@ func RegisterCP(basecp BaseCP, state *UserState, url string) *ContentPage {
 	return cp
 }
 
-func (ue *UserEngine) ServeSystem() {
+func (ue *UserEngine) ServePages() {
 	state := ue.state
 	web.Post("/register/(.*)", GenerateRegisterUser(state))
 	web.Post("/login/(.*)", GenerateLoginUser(state))
