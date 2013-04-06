@@ -1,11 +1,10 @@
-package siteengines
+package siteengine
 
 import (
 	"strconv"
 	"time"
 
 	. "github.com/xyproto/browserspeak"
-	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"

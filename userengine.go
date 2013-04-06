@@ -1,4 +1,4 @@
-package siteengines
+package siteengine
 
 // TODO: Check for the visual likeness of two usernames when checking for availability! Generate images and compare pixels.
 // TODO: Logging in should work case sensitively, or at least without concern for the case of the first letter
@@ -17,14 +17,6 @@ import (
 	. "github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"
 )
-
-type UserState struct {
-	// see: http://redis.io/topics/data-types
-	users       *RedisHashMap   // Hash map of users, with several different fields per user ("loggedin", "confirmed", "email" etc)
-	usernames   *RedisSet       // A list of all usernames, for easy enumeration
-	unconfirmed *RedisSet       // A list of unconfirmed usernames, for easy enumeration
-	pool        *ConnectionPool // A connection pool for Redis
-}
 
 // An Engine is a specific piece of a website
 // This part handles the login/logout/registration/confirmation pages
