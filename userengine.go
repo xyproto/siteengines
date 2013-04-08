@@ -65,7 +65,8 @@ func AlreadyHasConfirmationCode(state *UserState, confirmationCode string) bool 
 	for _, aUsername := range unconfirmedUsernames {
 		aConfirmationCode, err := state.GetConfirmationCode(aUsername)
 		if err != nil {
-			panic("ERROR: Inconsistent user")
+			// If the confirmation code can not be found, that's okay too
+			return false
 		}
 		if confirmationCode == aConfirmationCode {
 			// Found it
