@@ -89,9 +89,10 @@ func GenerateConfirmUser(state *UserState) WebHandle {
 		// Find the username by looking up the confirmationCode on unconfirmed users
 		username := ""
 		for _, aUsername := range unconfirmedUsernames {
-			aConfirmationCode, err := state.GetConfirmationCode(username)
+			aConfirmationCode, err := state.GetConfirmationCode(aUsername)
 			if err != nil {
-				panic("ERROR: Inconsistent user!")
+				// If the confirmation code can not be found, just skip this one
+				continue
 			}
 			if confirmationCode == aConfirmationCode {
 				// Found the right user
