@@ -69,7 +69,8 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 				s += "<td><a class=\"careful\" href=\"/remove/" + username + "\">remove</a></td>"
 				email, err := state.GetEmail(username)
 				if err == nil {
-					s += "<td>" + email + "</td>"
+					// The cleanup happens at registration time, but it's ok with an extra cleanup
+					s += "<td>" + CleanUpUserInput(email) + "</td>"
 				}
 				passwordHash, err := state.GetPasswordHash(username)
 				if err == nil {
