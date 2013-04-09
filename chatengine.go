@@ -207,25 +207,36 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		retval += ce.chatText(ce.GetLines(username))
 		retval += "</div>"
 		retval += "<br />"
-		// The say() function for submitting text over ajax (a post request), clearing the text intput field and updating the chat text
-		retval += JS("function say(text) { $.post('/say', {said:$('#sayText').val()}, function(data) { $('#sayText').val(''); $('#chatText').html(data); }); }")
+		retval += JS("var fastestPolling = 500;")
+		retval += JS("var slowestPolling = 64000;")
+		retval += JS("var pollInterval = fastestPolling;")
+		retval += JS("var pollID = 0;")
+		// The say() function for submitting text over ajax (a post request), clearing the text intput field and updating the chat text.
+		// Also sets the polling interval to the fastest value.
+		retval += JS("function say(text) { pollInterval = fastestPolling; $.post('/say', {said:$('#sayText').val()}, function(data) { $('#sayText').val(''); $('#chatText').html(data); }); }")
 		// Call say() at return 
 		retval += "<input size='60' id='sayText' name='said' type='text' onKeypress=\"if (event.keyCode == 13) { say($('#sayText').val()); };\">"
 		// Cal say() at the click of the button
 		retval += "<button onClick='say();'>Say</button>"
 		// Focus on the text input
 		retval += JS(Focus("#sayText"))
-		// TODO: Update the chat every 64 seconds. If something happens, update every 200ms, then 400ms, then 800ms etc until it's at 64 seconds again. This should happen in javascript.
-		// Update the chat text every 500 ms
-		retval += JS("setInterval(function(){$.post('/say', {}, function(data) { $('#chatText').html(data); });}, 500);")
+		// Update the chat text. Reduce the poll interval at every poll.
+		// When the user does something, the polling interval will be reset to something quicker.
+		retval += JS(`function UpdateChat() {
+		    if (pollInterval < slowestPolling) {
+			    pollInterval *= 2;
+				clearInterval(pollID);
+				pollID = setInterval(UpdateChat, pollInterval);
+			};
+			$.post('/say', {}, function(data) { $('#chatText').html(data); });
+		}`)
+		retval += JS("pollID = setInterval(UpdateChat, pollInterval);")
 		// A function for setting the preferred number of lines
 		retval += JS("function setlines(numlines) { $.post('/setchatlines', {lines:numlines}, function(data) { $('#chatText').html(data); }); }")
 		// A button for viewing 20 lines at a time
 		retval += "<button onClick='setlines(20);'>20</button>"
 		// A button for viewing 50 lines at a time
 		retval += "<button onClick='setlines(50);'>50</button>"
-		// A button for viewing all lines at a time
-		retval += "<button onClick='setlines(-1);'>all</button>"
 		// A button for viewing 99999 lines at a time
 		retval += "<button onClick='setlines(99999);'>99999</button>"
 		// For viewing all the text so far
