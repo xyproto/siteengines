@@ -80,6 +80,28 @@ func (ce *ChatEngine) Seen(username string) {
 	ce.chatState.userInfo.Set(username, "lastseen", string(encodedTime))
 }
 
+// Checks if the user has been seen lately (within 12 hours ago)
+func (ce *ChatEngine) SeenLately(username string) bool {
+	encodedTime, err := ce.chatState.userInfo.Get(username, "lastseen")
+	if err != nil {
+		return false
+	}
+	var then time.Time
+	err = then.GobDecode([]byte(encodedTime))
+	if err != nil {
+		return false
+	}
+	notTooLongDuration, err := time.ParseDuration("-12h")
+	if err != nil {
+		return false
+	}
+	notTooLongAgo := time.Now().Add(notTooLongDuration)
+	if then.After(notTooLongAgo) {
+		return true
+	}
+	return false
+}
+
 func (ce *ChatEngine) GetLastSeen(username string) string {
 	encodedTime, err := ce.chatState.userInfo.Get(username, "lastseen")
 	if err == nil {
@@ -167,7 +189,7 @@ func (ce *ChatEngine) GetLastChatText(n int) []string {
 
 func (ce *ChatEngine) chatText(lines int) string {
 	if lines == -1 {
-		return "BANANAS!"
+		return ""
 	}
 	retval := "<div id='chatText'>"
 	// Show N lines of chat text
@@ -192,15 +214,17 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		// TODO: Add a button for someone to see the entire chat
 		// TODO: Add some protection against random monkeys that only fling poo
 
-		retval := "Hi " + username + "<br />"
+		retval := "Hi " + username + "!<br />"
 		retval += "<br />"
-		retval += "Participants:" + "<br />"
+		retval += "Other participants:" + "<br />"
 		// TODO: If the person has not been seen the last 96 hours, don't list him/her
 		for _, otherUser := range ce.GetChatUsers() {
 			if otherUser == username {
 				continue
 			}
-			retval += "&nbsp;&nbsp;" + otherUser + ", last seen " + ce.GetLastSeen(otherUser) + "<br />"
+			if ce.SeenLately(otherUser) {
+				retval += "&nbsp;&nbsp;" + otherUser + ", last seen " + ce.GetLastSeen(otherUser) + "<br />"
+			}
 		}
 		retval += "<br />"
 		retval += "<div style='background-color: white; padding: 1em;'>"
