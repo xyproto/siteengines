@@ -3,6 +3,7 @@ package siteengines
 // TODO: Check for the visual likeness of two usernames when checking for availability! Generate images and compare pixels.
 // TODO: Logging in should work case sensitively, or at least without concern for the case of the first letter
 // TODO: Consider using "0" and "1" instead of "true" or "false" when setting values, while still understanding "true" or "false"
+// TODO: The password should be set at confirmation time instead of registration-time in order to make the process clearer and pave the way for invite-only?
 
 import (
 	"crypto/sha256"
