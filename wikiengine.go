@@ -20,14 +20,14 @@ type WikiEngine struct {
 }
 
 type WikiState struct {
-	pages    *simpleredis.HashMap        // All the pages
-	pool     *simpleredis.ConnectionPool // A connection pool for Redis
+	pages *simpleredis.HashMap        // All the pages
+	pool  *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
 var (
-	wikiFields = map[string]string {
-		"title":"Untitled",
-		"text":"No text",
+	wikiFields = map[string]string{
+		"title": "Untitled",
+		"text":  "No text",
 	}
 )
 
@@ -162,7 +162,6 @@ func (we *WikiEngine) GenerateWiki() WebHandle {
 			retval += "<h1>No such page</h1>"
 			retval += "<br /><button id='btnCreate'>Create</button><br />"
 			retval += JS(OnClick("#btnCreate", Redirect("/wiki/create_blablablabla")))
-			// TODO: Move the IP, Chat and evolving game stuff to roboticoverlords instead
 		}
 		return retval
 	}
