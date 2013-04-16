@@ -48,10 +48,9 @@ func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvg := tvgf(we.userState)
 
 	web.Get("/wiki", we.GenerateWikiRedirect())
-	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateWiki(), tvg))
-	web.Get("/wiki/(.*)/edit", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))
-	web.Post("/wiki/edit", we.GenerateEdit())
-	web.Post("/wiki/create", we.GenerateEdit())
+	web.Get("/edit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))
+	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))
+	web.Post("/wiki", we.GenerateCreateOrUpdateWiki()) // Create or update pages
 	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))
 }
 
@@ -117,7 +116,7 @@ func (we *WikiEngine) HasPage(pageid string) bool {
 	return has
 }
 
-func (we *WikiEngine) GenerateEdit() SimpleContextHandle {
+func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		username := GetBrowserUsername(ctx)
 		if username == "" {
@@ -126,7 +125,16 @@ func (we *WikiEngine) GenerateEdit() SimpleContextHandle {
 		if !we.userState.IsLoggedIn(username) {
 			return "Not logged in"
 		}
-		return "Edit"
+		pageid := CleanUpUserInput(ctx.Params["id"])
+		title := CleanUpUserInput(ctx.Params["title"])
+		text := CleanUpUserInput(ctx.Params["text"])
+
+		if we.HasPage(pageid) {
+			// TODO: Create a page or change a page here
+		}
+
+		//ctx.SetHeader("Refresh", "0; url=/wiki/" + pageid, true)
+		return "/wiki/" + pageid
 	}
 }
 
@@ -139,11 +147,16 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		if !we.userState.IsLoggedIn(username) {
 			return "Not logged in"
 		}
-		return "EDIT FORM"
+		retval := "<input size='60' type='text' id='pageId' value='main'><br />"
+		retval += "<input size='60' type='text' id='pageTitle' value='TEH TIZITLE'><br />"
+		retval += "<textarea rows='20' cols='20' id='pageText'>Blaublau</textarea><br />"
+		retval += JS("function save() { $.post('/wiki', {id:$('#pageId').val(), title:$('#pageTitle').val(), text:$('#pageText').val()}, function(data) { window.location.href=data; }); }")
+		retval += "<button onClick='save();'>Save</button>"
+		return retval
 	}
 }
 
-func (we *WikiEngine) GenerateWiki() WebHandle {
+func (we *WikiEngine) GenerateShowWiki() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
 		username := GetBrowserUsername(ctx)
 		if username == "" {
@@ -157,11 +170,11 @@ func (we *WikiEngine) GenerateWiki() WebHandle {
 			retval += "<h1>" + we.GetTitle(pageid) + "</h1>"
 			retval += we.GetText(pageid) + "<br />"
 			retval += "<br /><button id='btnEdit'>Edit</button><br />"
-			retval += JS(OnClick("#btnEdit", "alert('edit');"))
+			retval += JS(OnClick("#btnEdit", Redirect("/edit/"+pageid)))
 		} else {
 			retval += "<h1>No such page</h1>"
 			retval += "<br /><button id='btnCreate'>Create</button><br />"
-			retval += JS(OnClick("#btnCreate", Redirect("/wiki/create_blablablabla")))
+			retval += JS(OnClick("#btnCreate", Redirect("/edit/"+pageid)))
 		}
 		return retval
 	}
