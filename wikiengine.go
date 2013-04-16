@@ -1,12 +1,8 @@
 package siteengines
 
 import (
-	//"strconv"
-	//"time"
-
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
-	//"github.com/xyproto/instapage"
 	"github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"
 )
@@ -109,7 +105,7 @@ func (we *WikiEngine) GetTitle(pageid string) string {
 }
 
 func (we *WikiEngine) HasPage(pageid string) bool {
-	has, err := we.wikiState.pages.Has("page:" + pageid)
+	has, err := we.wikiState.pages.Exists(pageid)
 	if err != nil {
 		return false
 	}
@@ -129,9 +125,10 @@ func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 		title := CleanUpUserInput(ctx.Params["title"])
 		text := CleanUpUserInput(ctx.Params["text"])
 
-		if we.HasPage(pageid) {
-			// TODO: Create a page or change a page here
+		if !we.HasPage(pageid) {
+			we.CreatePage(pageid)
 		}
+		we.ChangePage(pageid, title, text)
 
 		//ctx.SetHeader("Refresh", "0; url=/wiki/" + pageid, true)
 		return "/wiki/" + pageid
@@ -147,9 +144,12 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		if !we.userState.IsLoggedIn(username) {
 			return "Not logged in"
 		}
-		retval := "<input size='60' type='text' id='pageId' value='main'><br />"
-		retval += "<input size='60' type='text' id='pageTitle' value='TEH TIZITLE'><br />"
-		retval += "<textarea rows='20' cols='20' id='pageText'>Blaublau</textarea><br />"
+		title := we.GetTitle(pageid)
+		text := we.GetText(pageid)
+
+		retval := "Page id: <input size='60' type='text' id='pageId' value='" + pageid + "'><br />"
+		retval += "Page title: <input size='60' type='text' id='pageTitle' value='" + title + "'><br />"
+		retval += "<textarea rows='20' cols='20' id='pageText'>" + text + "</textarea><br />"
 		retval += JS("function save() { $.post('/wiki', {id:$('#pageId').val(), title:$('#pageTitle').val(), text:$('#pageText').val()}, function(data) { window.location.href=data; }); }")
 		retval += "<button onClick='save();'>Save</button>"
 		return retval
@@ -172,7 +172,7 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 			retval += "<br /><button id='btnEdit'>Edit</button><br />"
 			retval += JS(OnClick("#btnEdit", Redirect("/edit/"+pageid)))
 		} else {
-			retval += "<h1>No such page</h1>"
+			retval += "<h1>No such page: " + pageid + "</h1>"
 			retval += "<br /><button id='btnCreate'>Create</button><br />"
 			retval += JS(OnClick("#btnCreate", Redirect("/edit/"+pageid)))
 		}
