@@ -207,7 +207,7 @@ func GenerateRegisterUser(state *UserState) WebHandle {
 		if !strings.Contains(email, "@") || !strings.Contains(email, ".") || strings.Contains(email, " ") {
 			return instapage.MessageOKback("Register", "Please use a valid email address.")
 		}
-		if email != CleanUpUserInput(email) {
+		if email != CleanUserInput(email) {
 			return instapage.MessageOKback("Register", "The sanitized email differs from the given email.")
 		}
 

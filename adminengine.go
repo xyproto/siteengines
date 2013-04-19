@@ -63,14 +63,14 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 				s += "<td><a class=\"username\" href=\"/status/" + username + "\">" + username + "</a></td>"
 				s += TableCell(state.IsConfirmed(username))
 				s += TableCell(state.IsLoggedIn(username))
-				s += TableCell(state.IsAdministrator(username))
+				s += TableCell(state.IsAdmin(username))
 				s += "<td><a class=\"darkgrey\" href=\"/admintoggle/" + username + "\">admin toggle</a></td>"
 				// TODO: Ask for confirmation first with a instapage.MessageOKurl("blabla", "blabla", "/actually/remove/stuff")
 				s += "<td><a class=\"careful\" href=\"/remove/" + username + "\">remove</a></td>"
 				email, err := state.GetEmail(username)
 				if err == nil {
 					// The cleanup happens at registration time, but it's ok with an extra cleanup
-					s += "<td>" + CleanUpUserInput(email) + "</td>"
+					s += "<td>" + CleanUserInput(email) + "</td>"
 				}
 				passwordHash, err := state.GetPasswordHash(username)
 				if err == nil {
@@ -265,7 +265,7 @@ func GenerateToggleAdmin(state *UserState) WebHandle {
 		if username == "admin" {
 			return instapage.MessageOKback("Admin toggle", "Can't remove admin rights from the admin user")
 		}
-		if !state.IsAdministrator(username) {
+		if !state.IsAdmin(username) {
 			state.SetAdminStatus(username)
 			return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now an admin", "/admin")
 		}

@@ -288,7 +288,7 @@ func (ce *ChatEngine) GenerateSayCurrentUser() SimpleContextHandle {
 			return ce.chatText(ce.GetLines(username))
 		}
 
-		ce.Say(username, CleanUpUserInput(said))
+		ce.Say(username, CleanUserInput(said))
 
 		return ce.chatText(ce.GetLines(username))
 	}

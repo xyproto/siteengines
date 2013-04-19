@@ -46,18 +46,17 @@ func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(we.userState)
 
-	web.Get("/wiki", we.GenerateWikiRedirect())
-	web.Get("/edit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))
-	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))
-	web.Post("/wiki", we.GenerateCreateOrUpdateWiki()) // Create or update pages
-	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))
+	web.Get("/wiki", we.GenerateWikiRedirect())                                        // Redirect to /wiki/main
+	web.Get("/wikiedit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))    // Form for editing wiki pages
+	web.Get("/wikidelete(.*)", wikiCP.WrapWebHandle(we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
+	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))            // Displaying wiki pages
+	web.Post("/wiki", we.GenerateCreateOrUpdateWiki())                                 // Create or update pages
+	web.Post("/wikidelete", we.GenerateDeleteWiki())                                   // Delete pages (admin only)
+	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                       // CSS that is specific for wiki pages
 }
 
 func (we *WikiEngine) CreatePage(pageid string) string {
-	if pageid == "edit" || pageid == "create" {
-		return "Can not create a page named " + pageid
-	}
-	if pageid != CleanUpUserInput(pageid) {
+	if pageid != CleanUserInput(pageid) {
 		return "Can not create a page named " + pageid
 	}
 	for fieldName, defaultText := range wikiFields {
@@ -69,7 +68,7 @@ func (we *WikiEngine) CreatePage(pageid string) string {
 	return "OK, created a page named " + pageid
 }
 
-func (we *WikiEngine) RemovePage(pageid string) {
+func (we *WikiEngine) DeletePage(pageid string) {
 	for fieldName, _ := range wikiFields {
 		err := we.wikiState.pages.Del(pageid, fieldName)
 		if err != nil {
@@ -79,8 +78,8 @@ func (we *WikiEngine) RemovePage(pageid string) {
 }
 
 func (we *WikiEngine) ChangePage(pageid, newtitle, newtext string) {
-	newtitle = CleanUpUserInput(newtitle)
-	newtext = CleanUpUserInput(newtext)
+	newtitle = CleanUserInput(newtitle)
+	newtext = CleanUserInput(newtext)
 	err := we.wikiState.pages.Set(pageid, "title", newtitle)
 	if err != nil {
 		panic("ERROR: Can not set wiki page title!")
@@ -134,16 +133,38 @@ func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 		if !we.userState.IsLoggedIn(username) {
 			return "Not logged in"
 		}
-		pageid := CleanUpUserInput(ctx.Params["id"])
-		title := CleanUpUserInput(ctx.Params["title"])
-		text := CleanUpUserInput(ctx.Params["text"])
+		pageid := CleanUserInput(ctx.Params["id"])
+		title := CleanUserInput(ctx.Params["title"])
+		text := CleanUserInput(ctx.Params["text"])
 
 		if !we.HasPage(pageid) {
 			we.CreatePage(pageid)
 		}
 		we.ChangePage(pageid, title, text)
 
-		//ctx.SetHeader("Refresh", "0; url=/wiki/" + pageid, true)
+		return "/wiki/" + pageid
+	}
+}
+
+func (we *WikiEngine) GenerateDeleteWiki() SimpleContextHandle {
+	return func(ctx *web.Context) string {
+		username := GetBrowserUsername(ctx)
+		if username == "" {
+			return "No user logged in"
+		}
+		if !we.userState.IsLoggedIn(username) {
+			return "Not logged in"
+		}
+		if !we.userState.IsAdmin(username) {
+			return "Not admin"
+		}
+		pageid := CleanUserInput(ctx.Params["id"])
+
+		if !we.HasPage(pageid) {
+			return "No such page"
+		}
+		we.DeletePage(pageid)
+
 		return "/wiki/" + pageid
 	}
 }
@@ -157,6 +178,8 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		if !we.userState.IsLoggedIn(username) {
 			return "Not logged in"
 		}
+
+		pageid = CleanUserInput(pageid)
 		title := we.GetTitle(pageid)
 		text := we.GetText(pageid, false)
 
@@ -165,6 +188,30 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		retval += "<textarea rows='20' cols='20' id='pageText'>" + text + "</textarea><br />"
 		retval += JS("function save() { $.post('/wiki', {id:$('#pageId').val(), title:$('#pageTitle').val(), text:$('#pageText').val()}, function(data) { window.location.href=data; }); }")
 		retval += "<button onClick='save();'>Save</button>"
+		return retval
+	}
+}
+
+func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
+	return func(ctx *web.Context, pageid string) string {
+		username := GetBrowserUsername(ctx)
+		if username == "" {
+			return "No user logged in"
+		}
+		if !we.userState.IsLoggedIn(username) {
+			return "Not logged in"
+		}
+		if !we.userState.IsAdmin(username) {
+			return "Must be admin"
+		}
+
+		pageid = CleanUserInput(pageid)
+
+		retval := "Page id: " + pageid + "<br />"
+		retval += "<br />"
+		retval += "Delete?<br />"
+		retval += JS("function delete() { $.post('/wikidelete', {id:$('#pageId').val()}, function(data) { window.location.href=data; }); }")
+		retval += "<button onClick='delete();'>Delete</button>"
 		return retval
 	}
 }
@@ -185,10 +232,14 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 		if (username != "") && we.userState.IsLoggedIn(username) {
 			if we.HasPage(pageid) {
 				retval += "<br /><button id='btnEdit'>Edit</button><br />"
-				retval += JS(OnClick("#btnEdit", Redirect("/edit/"+pageid)))
+				retval += JS(OnClick("#btnEdit", Redirect("/wikiedit/"+pageid)))
 			} else {
 				retval += "<br /><button id='btnCreate'>Create</button><br />"
-				retval += JS(OnClick("#btnCreate", Redirect("/edit/"+pageid)))
+				retval += JS(OnClick("#btnCreate", Redirect("/wikiedit/"+pageid)))
+			}
+			if we.userState.IsAdmin(username) {
+				retval += "<br /><button id='btnDelete'>Delete</button><br />"
+				retval += JS(OnClick("#btnDelete", Redirect("/wikidelete/"+pageid)))
 			}
 		}
 		return retval
