@@ -1,6 +1,9 @@
 package siteengines
 
 import (
+	"strings"
+
+	"github.com/russross/blackfriday"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/simpleredis"
@@ -88,12 +91,17 @@ func (we *WikiEngine) ChangePage(pageid, newtitle, newtext string) {
 	}
 }
 
-func (we *WikiEngine) GetText(pageid string) string {
-	retval, err := we.wikiState.pages.Get(pageid, "text")
+func (we *WikiEngine) GetText(pageid string, htmlformatted bool) string {
+	text, err := we.wikiState.pages.Get(pageid, "text")
 	if err != nil {
 		return "No text"
 	}
-	return retval
+	if htmlformatted {
+		// TODO: Get a list of all positions of all wiki links by using a function
+		text = strings.Replace(text, "[[", "<a href='/wiki/", -1)
+		text = strings.Replace(text, "]]", "'>link</a>", -1)
+	}
+	return text
 }
 
 func (we *WikiEngine) GetTitle(pageid string) string {
@@ -145,7 +153,7 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 			return "Not logged in"
 		}
 		title := we.GetTitle(pageid)
-		text := we.GetText(pageid)
+		text := we.GetText(pageid, false)
 
 		retval := "Page id: <input size='60' type='text' id='pageId' value='" + pageid + "'><br />"
 		retval += "Page title: <input size='60' type='text' id='pageTitle' value='" + title + "'><br />"
@@ -168,7 +176,7 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 		retval := ""
 		if we.HasPage(pageid) {
 			retval += "<h1>" + we.GetTitle(pageid) + "</h1>"
-			retval += we.GetText(pageid) + "<br />"
+			retval += we.GetText(pageid, true) + "<br />"
 			retval += "<br /><button id='btnEdit'>Edit</button><br />"
 			retval += JS(OnClick("#btnEdit", Redirect("/edit/"+pageid)))
 		} else {
