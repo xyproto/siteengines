@@ -219,7 +219,7 @@ func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 
 		pageid = CleanUserInput(pageid)
 		title := we.GetTitle(pageid)
-		text := we.GetText(pageid, true)
+		text := we.GetText(pageid, false)
 
 		retval := ""
 		retval += "<h2>View source</h2>"
