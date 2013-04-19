@@ -6,6 +6,7 @@ import (
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
+	"github.com/xyproto/instapage"
 	"github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"
 )
@@ -159,12 +160,12 @@ func (we *WikiEngine) GenerateDeleteWiki() SimpleContextHandle {
 		pageid := CleanUserInput(ctx.Params["id"])
 
 		if !we.HasPage(pageid) {
-			return "No such page"
+			return instapage.MessageOKurl("Can't delete", "Could not delete this wiki page: "+pageid, "/wiki/main")
 		}
 		we.DeletePage(pageid)
 
-		// TODO: Don't hardcode
-		return "/wiki/main"
+		return instapage.MessageOKback("OK", "Page deleted: "+pageid)
+
 	}
 }
 
