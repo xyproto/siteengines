@@ -99,15 +99,11 @@ func (we *WikiEngine) GetText(pageid string, formatted bool) string {
 	}
 	if formatted {
 
-		// TODO: Figure this one out
-		re := regexp.MustCompile("\"[[\"s*\"]]\"")
-		text = re.ReplaceAllString(text, "kake")
+		// Wiki links
+		re := regexp.MustCompile("\\[\\[(.*?)\\]\\]")
+		text = re.ReplaceAllString(text, "<a href='/wiki/$1'>$1</a>")
 
-		// TODO: Get a list of all positions of all wiki links by using a function
-		//text = strings.Replace(text, "[[", "<a href='/wiki/", -1)
-		//text = strings.Replace(text, "]]", "'>link</a>", -1)
-
-		// Markdown!
+		// Markdown
 		text = string(blackfriday.MarkdownCommon([]byte(text)))
 	}
 	return text
