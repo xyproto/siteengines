@@ -2,17 +2,20 @@ package siteengines
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/instapage"
 	"github.com/xyproto/simpleredis"
 	"github.com/xyproto/web"
 )
 
 // An Engine is a specific piewe.of a website
 // This part handles the "wiki" pages
+
+// TODO: Create a page that lists all the wiki pages
+// TODO: Add the wiki pages to the search engine somehow (and the other engines too, like the chat)
 
 type WikiEngine struct {
 	userState *UserState
@@ -49,10 +52,11 @@ func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 
 	web.Get("/wiki", we.GenerateWikiRedirect())                                         // Redirect to /wiki/main
 	web.Get("/wikiedit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
+	web.Get("/wikisource/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiViewSource(), tvg)) // Page for viewing the source
 	web.Get("/wikidelete/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
 	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))             // Displaying wiki pages
 	web.Post("/wiki", we.GenerateCreateOrUpdateWiki())                                  // Create or update pages
-	web.Post("/wikideletenow", we.GenerateDeleteWiki())                                 // Delete pages (admin only)
+	web.Post("/wikideletenow", we.GenerateDeleteWikiNow())                              // Delete pages (admin only)
 	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                        // CSS that is specific for wiki pages
 }
 
@@ -93,7 +97,9 @@ func (we *WikiEngine) ChangePage(pageid, newtitle, newtext string) {
 func (we *WikiEngine) GetText(pageid string, formatted bool) string {
 	text, err := we.wikiState.pages.Get(pageid, "text")
 	if err != nil {
-		return "No text"
+		// Suggest "hi" as the default text
+		// TODO: Use a poem generator instead
+		return "hi"
 	}
 	if formatted {
 
@@ -110,7 +116,8 @@ func (we *WikiEngine) GetText(pageid string, formatted bool) string {
 func (we *WikiEngine) GetTitle(pageid string) string {
 	retval, err := we.wikiState.pages.Get(pageid, "title")
 	if err != nil {
-		return "Untitled"
+		// Suggest a capitalized version of the page id as the default title
+		return strings.Title(pageid)
 	}
 	return retval
 }
@@ -145,7 +152,7 @@ func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 	}
 }
 
-func (we *WikiEngine) GenerateDeleteWiki() SimpleContextHandle {
+func (we *WikiEngine) GenerateDeleteWikiNow() SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		username := GetBrowserUsername(ctx)
 		if username == "" {
@@ -159,12 +166,16 @@ func (we *WikiEngine) GenerateDeleteWiki() SimpleContextHandle {
 		}
 		pageid := CleanUserInput(ctx.Params["id"])
 
+		if pageid == "" {
+			return "Could not delete empty pageid"
+		}
+
 		if !we.HasPage(pageid) {
-			return instapage.MessageOKurl("Can't delete", "Could not delete this wiki page: "+pageid, "/wiki/main")
+			return "Could not delete this wiki page: " + pageid
 		}
 		we.DeletePage(pageid)
 
-		return instapage.MessageOKback("OK", "Page deleted: "+pageid)
+		return "OK, page deleted: " + pageid
 
 	}
 }
@@ -183,11 +194,39 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		title := we.GetTitle(pageid)
 		text := we.GetText(pageid, false)
 
-		retval := "Page id: <input size='60' type='text' id='pageId' value='" + pageid + "'><br />"
-		retval += "Page title: <input size='60' type='text' id='pageTitle' value='" + title + "'><br />"
-		retval += "<textarea rows='20' cols='20' id='pageText'>" + text + "</textarea><br />"
+		retval := ""
+		retval += "<h2>Create or edit</h2>"
+		retval += "Page id: <input size='30' type='text' id='pageId' value='" + pageid + "'><br />"
+		retval += "Page title: <input size='40' type='text' id='pageTitle' value='" + title + "'><br /><br />"
+		retval += "<textarea rows='25' cols='120' id='pageText'>" + text + "</textarea><br /><br />"
 		retval += JS("function save() { $.post('/wiki', {id:$('#pageId').val(), title:$('#pageTitle').val(), text:$('#pageText').val()}, function(data) { window.location.href=data; }); }")
 		retval += "<button onClick='save();'>Save</button>"
+		// Focus on the text
+		retval += JS(Focus("#pageText") + "$('#pageText').select();")
+		return retval
+	}
+}
+
+func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
+	return func(ctx *web.Context, pageid string) string {
+		username := GetBrowserUsername(ctx)
+		if username == "" {
+			return "No user logged in"
+		}
+		if !we.userState.IsLoggedIn(username) {
+			return "Not logged in"
+		}
+
+		pageid = CleanUserInput(pageid)
+		title := we.GetTitle(pageid)
+		text := we.GetText(pageid, true)
+
+		retval := ""
+		retval += "<h2>View source</h2>"
+		retval += "Page id: <input style='background-color: #e0e0e0;' readonly='readonly' size='30' type='text' id='pageId' value='" + pageid + "'><br />"
+		retval += "Page title: <input style='background-color: #e0e0e0;' readonly='readonly' size='40' type='text' id='pageTitle' value='" + title + "'><br /><br />"
+		retval += "<textarea style='background-color: #e0e0e0;' readonly='readonly' rows='25' cols='120' id='pageText'>" + text + "</textarea><br /><br />"
+		retval += "<button onClick='history.go(-1);'>Back</button>"
 		return retval
 	}
 }
@@ -207,11 +246,11 @@ func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
 
 		pageid = CleanUserInput(pageid)
 
-		retval := "Page id: " + pageid + "<br />"
-		retval += "<br />"
-		retval += "Delete?<br />"
-		retval += JS("function deletePage() { $.post('/wikideletenow', {id:$('#pageId').val(), }, function(data) { window.location.href=data; }); }")
-		retval += "<button onClick='deletePage();'>Delete</button>"
+		retval := "<br />"
+		retval += "Really delete " + pageid + "?<br />"
+		retval += JS("function deletePage() { $.post('/wikideletenow', {id:'" + pageid + "'}, function(data) { $('#status').html(data) }); }")
+		retval += "<button onClick='deletePage();'>Yes</button><br />"
+		retval += "<label id='status'></label><br />"
 		return retval
 	}
 }
@@ -231,15 +270,26 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 		username := GetBrowserUsername(ctx)
 		if (username != "") && we.userState.IsLoggedIn(username) {
 			if we.HasPage(pageid) {
-				retval += "<br /><button id='btnEdit'>Edit</button><br />"
-				retval += JS(OnClick("#btnEdit", Redirect("/wikiedit/"+pageid)))
+				// Page actions for regular users for pages that exists and are not the main page
+				if pageid != "main" {
+					retval += "<br /><button id='btnEdit'>Edit</button>"
+					retval += JS(OnClick("#btnEdit", Redirect("/wikiedit/"+pageid)))
+					retval += "<button id='btnDelete'>Delete</button>"
+					retval += JS(OnClick("#btnDelete", Redirect("/wikidelete/"+pageid)))
+				} else {
+					// Page actions for administrators on the main page
+					if we.userState.IsAdmin(username) {
+						retval += "<br /><button id='btnEdit'>Edit</button>"
+						retval += JS(OnClick("#btnEdit", Redirect("/wikiedit/"+pageid)))
+					}
+				}
+				// Page actions for regular users for every page
+				retval += "<button id='btnViewSource'>View source</button>"
+				retval += JS(OnClick("#btnViewSource", Redirect("/wikisource/"+pageid)))
 			} else {
+				// Page actions for regular users for pages that does not exist yet
 				retval += "<br /><button id='btnCreate'>Create</button><br />"
 				retval += JS(OnClick("#btnCreate", Redirect("/wikiedit/"+pageid)))
-			}
-			if we.userState.IsAdmin(username) {
-				retval += "<button id='btnDelete'>Delete</button><br />"
-				retval += JS(OnClick("#btnDelete", Redirect("/wikidelete/"+pageid)))
 			}
 		}
 		return retval
