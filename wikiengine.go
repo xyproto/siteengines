@@ -1,7 +1,7 @@
 package siteengines
 
 import (
-	"strings"
+	"regexp"
 
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/browserspeak"
@@ -91,15 +91,24 @@ func (we *WikiEngine) ChangePage(pageid, newtitle, newtext string) {
 	}
 }
 
-func (we *WikiEngine) GetText(pageid string, htmlformatted bool) string {
+// Get a wiki page by page id, either raw or formatted
+func (we *WikiEngine) GetText(pageid string, formatted bool) string {
 	text, err := we.wikiState.pages.Get(pageid, "text")
 	if err != nil {
 		return "No text"
 	}
-	if htmlformatted {
+	if formatted {
+
+		// TODO: Figure this one out
+		re := regexp.MustCompile("\"[[\"s*\"]]\"")
+		text = re.ReplaceAllString(text, "kake")
+
 		// TODO: Get a list of all positions of all wiki links by using a function
-		text = strings.Replace(text, "[[", "<a href='/wiki/", -1)
-		text = strings.Replace(text, "]]", "'>link</a>", -1)
+		//text = strings.Replace(text, "[[", "<a href='/wiki/", -1)
+		//text = strings.Replace(text, "]]", "'>link</a>", -1)
+
+		// Markdown!
+		text = string(blackfriday.MarkdownCommon([]byte(text)))
 	}
 	return text
 }
@@ -166,23 +175,25 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 
 func (we *WikiEngine) GenerateShowWiki() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := GetBrowserUsername(ctx)
-		if username == "" {
-			return "No user logged in"
-		}
-		if !we.userState.IsLoggedIn(username) {
-			return "Not logged in"
-		}
 		retval := ""
+		// Always show the wiki page
+		// TODO: Add a feature for marking wiki pages as unofficial and/or locked?
 		if we.HasPage(pageid) {
 			retval += "<h1>" + we.GetTitle(pageid) + "</h1>"
 			retval += we.GetText(pageid, true) + "<br />"
-			retval += "<br /><button id='btnEdit'>Edit</button><br />"
-			retval += JS(OnClick("#btnEdit", Redirect("/edit/"+pageid)))
 		} else {
 			retval += "<h1>No such page: " + pageid + "</h1>"
-			retval += "<br /><button id='btnCreate'>Create</button><br />"
-			retval += JS(OnClick("#btnCreate", Redirect("/edit/"+pageid)))
+		}
+		// Display edit or create buttons if the user is logged in
+		username := GetBrowserUsername(ctx)
+		if (username != "") && we.userState.IsLoggedIn(username) {
+			if we.HasPage(pageid) {
+				retval += "<br /><button id='btnEdit'>Edit</button><br />"
+				retval += JS(OnClick("#btnEdit", Redirect("/edit/"+pageid)))
+			} else {
+				retval += "<br /><button id='btnCreate'>Create</button><br />"
+				retval += JS(OnClick("#btnCreate", Redirect("/edit/"+pageid)))
+			}
 		}
 		return retval
 	}
