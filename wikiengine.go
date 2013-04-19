@@ -46,13 +46,13 @@ func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(we.userState)
 
-	web.Get("/wiki", we.GenerateWikiRedirect())                                        // Redirect to /wiki/main
-	web.Get("/wikiedit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))    // Form for editing wiki pages
-	web.Get("/wikidelete(.*)", wikiCP.WrapWebHandle(we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
-	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))            // Displaying wiki pages
-	web.Post("/wiki", we.GenerateCreateOrUpdateWiki())                                 // Create or update pages
-	web.Post("/wikidelete", we.GenerateDeleteWiki())                                   // Delete pages (admin only)
-	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                       // CSS that is specific for wiki pages
+	web.Get("/wiki", we.GenerateWikiRedirect())                                         // Redirect to /wiki/main
+	web.Get("/wikiedit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
+	web.Get("/wikidelete/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
+	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))             // Displaying wiki pages
+	web.Post("/wiki", we.GenerateCreateOrUpdateWiki())                                  // Create or update pages
+	web.Post("/wikideletenow", we.GenerateDeleteWiki())                                 // Delete pages (admin only)
+	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                        // CSS that is specific for wiki pages
 }
 
 func (we *WikiEngine) CreatePage(pageid string) string {
@@ -69,11 +69,9 @@ func (we *WikiEngine) CreatePage(pageid string) string {
 }
 
 func (we *WikiEngine) DeletePage(pageid string) {
-	for fieldName, _ := range wikiFields {
-		err := we.wikiState.pages.Del(pageid, fieldName)
-		if err != nil {
-			panic("ERROR: Can not remove wiki page (" + fieldName + ")!")
-		}
+	err := we.wikiState.pages.Del(pageid)
+	if err != nil {
+		panic("ERROR: Can not remove wiki page (" + pageid + ")!")
 	}
 }
 
@@ -165,7 +163,8 @@ func (we *WikiEngine) GenerateDeleteWiki() SimpleContextHandle {
 		}
 		we.DeletePage(pageid)
 
-		return "/wiki/" + pageid
+		// TODO: Don't hardcode
+		return "/wiki/main"
 	}
 }
 
@@ -210,8 +209,8 @@ func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
 		retval := "Page id: " + pageid + "<br />"
 		retval += "<br />"
 		retval += "Delete?<br />"
-		retval += JS("function delete() { $.post('/wikidelete', {id:$('#pageId').val()}, function(data) { window.location.href=data; }); }")
-		retval += "<button onClick='delete();'>Delete</button>"
+		retval += JS("function deletePage() { $.post('/wikideletenow', {id:$('#pageId').val(), }, function(data) { window.location.href=data; }); }")
+		retval += "<button onClick='deletePage();'>Delete</button>"
 		return retval
 	}
 }
@@ -238,7 +237,7 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 				retval += JS(OnClick("#btnCreate", Redirect("/wikiedit/"+pageid)))
 			}
 			if we.userState.IsAdmin(username) {
-				retval += "<br /><button id='btnDelete'>Delete</button><br />"
+				retval += "<button id='btnDelete'>Delete</button><br />"
 				retval += JS(OnClick("#btnDelete", Redirect("/wikidelete/"+pageid)))
 			}
 		}
