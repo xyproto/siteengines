@@ -237,10 +237,16 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		retval += JS("var fastestPolling = 500;")
 		retval += JS("var slowestPolling = 64000;")
 		retval += JS("var pollInterval = fastestPolling;")
+		retval += JS("var inactivityCounter = 0;")
+		retval += JS("var inactivityTimeout = 20;") // Chat times out after 20 periods of slowest polling (approximately 20 minutes)
 		retval += JS("var pollID = 0;")
 		// The say() function for submitting text over ajax (a post request), clearing the text intput field and updating the chat text.
 		// Also sets the polling interval to the fastest value.
-		retval += JS("function say(text) { pollInterval = fastestPolling; $.post('/say', {said:$('#sayText').val()}, function(data) { $('#sayText').val(''); $('#chatText').html(data); }); }")
+		retval += JS(`function say(text) {
+			inactivityCounter = 0;
+			pollInterval = fastestPolling;
+			$.post('/say', {said:$('#sayText').val()}, function(data) { $('#sayText').val(''); $('#chatText').html(data); });
+		}`)
 		// Call say() at return 
 		retval += "<input size='60' id='sayText' name='said' type='text' onKeypress=\"if (event.keyCode == 13) { say($('#sayText').val()); };\">"
 		// Cal say() at the click of the button
@@ -254,8 +260,12 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 			    pollInterval *= 2;
 				clearInterval(pollID);
 				pollID = setInterval(UpdateChat, pollInterval);
-			};
-			$.post('/say', {}, function(data) { $('#chatText').html(data); });
+			} else {
+				inactivityCounter++;
+			}
+			if inactivityCounter < inactivityTimeout {
+				$.post('/say', {}, function(data) { $('#chatText').html(data); });
+			}
 		}`)
 		retval += JS("pollID = setInterval(UpdateChat, pollInterval);")
 		// A function for setting the preferred number of lines
