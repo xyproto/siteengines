@@ -16,6 +16,7 @@ import (
 
 // TODO: Create a page that lists all the wiki pages
 // TODO: Add the wiki pages to the search engine somehow (and the other engines too, like the chat)
+// TODO: Add "back" buttons to all the page actions
 
 type WikiEngine struct {
 	userState *UserState
@@ -201,6 +202,7 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		retval += "<textarea rows='25' cols='120' id='pageText'>" + text + "</textarea><br /><br />"
 		retval += JS("function save() { $.post('/wiki', {id:$('#pageId').val(), title:$('#pageTitle').val(), text:$('#pageText').val()}, function(data) { window.location.href=data; }); }")
 		retval += "<button onClick='save();'>Save</button>"
+		retval += BackButton()
 		// Focus on the text
 		retval += JS(Focus("#pageText") + "$('#pageText').select();")
 		return retval
@@ -226,7 +228,7 @@ func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 		retval += "Page id: <input style='background-color: #e0e0e0;' readonly='readonly' size='30' type='text' id='pageId' value='" + pageid + "'><br />"
 		retval += "Page title: <input style='background-color: #e0e0e0;' readonly='readonly' size='40' type='text' id='pageTitle' value='" + title + "'><br /><br />"
 		retval += "<textarea style='background-color: #e0e0e0;' readonly='readonly' rows='25' cols='120' id='pageText'>" + text + "</textarea><br /><br />"
-		retval += "<button onClick='history.go(-1);'>Back</button>"
+		retval += BackButton()
 		return retval
 	}
 }
@@ -251,6 +253,7 @@ func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
 		retval += JS("function deletePage() { $.post('/wikideletenow', {id:'" + pageid + "'}, function(data) { $('#status').html(data) }); }")
 		retval += "<button onClick='deletePage();'>Yes</button><br />"
 		retval += "<label id='status'></label><br />"
+		retval += BackButton()
 		return retval
 	}
 }
@@ -288,10 +291,11 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 				retval += JS(OnClick("#btnViewSource", Redirect("/wikisource/"+pageid)))
 			} else {
 				// Page actions for regular users for pages that does not exist yet
-				retval += "<br /><button id='btnCreate'>Create</button><br />"
+				retval += "<br /><button id='btnCreate'>Create</button>"
 				retval += JS(OnClick("#btnCreate", Redirect("/wikiedit/"+pageid)))
 			}
 		}
+		retval += BackButton()
 		return retval
 	}
 }

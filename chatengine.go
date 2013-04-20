@@ -214,19 +214,22 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		// TODO: Add a button for someone to see the entire chat
 		// TODO: Add some protection against random monkeys that only fling poo
 
-		retval := "Hi " + username + "!<br />"
-		retval += "<br />"
-		retval += "Other participants:" + "<br />"
-		// TODO: If the person has not been seen the last 96 hours, don't list him/her
+		retval := "<h2>Hi " + username + "</h2>"
+		seenusers := ""
 		for _, otherUser := range ce.GetChatUsers() {
 			if otherUser == username {
 				continue
 			}
 			if ce.SeenLately(otherUser) {
-				retval += "&nbsp;&nbsp;" + otherUser + ", last seen " + ce.GetLastSeen(otherUser) + "<br />"
+				seenusers += "&nbsp;&nbsp;" + otherUser + ", last seen " + ce.GetLastSeen(otherUser) + "<br />"
 			}
 		}
-		retval += "<br />"
+		// Add a list of participants that has been seen lately, if there are any
+		if seenusers != "" {
+			retval += "<br />Other participants:<br />"
+			retval += seenusers
+			retval += "<br />"
+		}
 		retval += "<div style='background-color: white; padding: 1em;'>"
 		retval += ce.chatText(ce.GetLines(username))
 		retval += "</div>"
@@ -256,7 +259,7 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		}`)
 		retval += JS("pollID = setInterval(UpdateChat, pollInterval);")
 		// A function for setting the preferred number of lines
-		retval += JS("function setlines(numlines) { $.post('/setchatlines', {lines:numlines}, function(data) { $('#chatText').html(data); }); }")
+		retval += JS("function setlines(numlines) { $.post('/setchatlines', {lines:numlines}, function(data) { $('#chatText').html(data); " + ScrollDownAnimated() + "}); }")
 		// A button for viewing 20 lines at a time
 		retval += "<button onClick='setlines(20);'>20</button>"
 		// A button for viewing 50 lines at a time
