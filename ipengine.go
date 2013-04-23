@@ -9,20 +9,20 @@ import (
 )
 
 type IPEngine struct {
-	state *genericsite.UserState
-	data  *simpleredis.List
+	userState *genericsite.UserState
+	data      *simpleredis.List
 }
 
-func NewIPEngine(state *genericsite.UserState) *IPEngine {
+func NewIPEngine(userState *genericsite.UserState) *IPEngine {
 
-	pool := state.GetPool()
+	pool := userState.GetPool()
 
 	// Create a RedisList for storing IP adresses
 	ips := simpleredis.NewList(pool, "IPs")
 
 	ipEngine := new(IPEngine)
 	ipEngine.data = ips
-	ipEngine.state = state
+	ipEngine.userState = userState
 
 	return ipEngine
 }
@@ -39,8 +39,15 @@ func (ie *IPEngine) GenerateSetIP() WebHandle {
 }
 
 // Get all the stored IP adresses and generate a page for it
-func (ie *IPEngine) GenerateGetAllIPs() SimpleWebHandle {
-	return func(val string) string {
+func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
+	return func(ctx *web.Context, val string) string {
+		username := genericsite.GetBrowserUsername(ctx)
+		if username == "" {
+			return "No user logged in"
+		}
+		if !ie.userState.IsLoggedIn(username) {
+			return "Not logged in"
+		}
 		s := ""
 		iplist, err := ie.data.GetAll()
 		if err == nil {
@@ -53,8 +60,15 @@ func (ie *IPEngine) GenerateGetAllIPs() SimpleWebHandle {
 }
 
 // Get the last stored IP adress and generate a page for it
-func (ie *IPEngine) GenerateGetLastIP() SimpleWebHandle {
-	return func(val string) string {
+func (ie *IPEngine) GenerateGetLastIP() WebHandle {
+	return func(ctx *web.Context, val string) string {
+		username := genericsite.GetBrowserUsername(ctx)
+		if username == "" {
+			return "No user logged in"
+		}
+		if !ie.userState.IsLoggedIn(username) {
+			return "Not logged in"
+		}
 		s := ""
 		ip, err := ie.data.GetLast()
 		if err == nil {

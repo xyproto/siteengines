@@ -15,8 +15,8 @@ import (
 // This part handles the "wiki" pages
 
 // TODO: Create a page that lists all the wiki pages
+
 // TODO: Add the wiki pages to the search engine somehow (and the other engines too, like the chat)
-// TODO: Add "back" buttons to all the page actions
 
 type WikiEngine struct {
 	userState *UserState
@@ -56,9 +56,22 @@ func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	web.Get("/wikisource/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiViewSource(), tvg)) // Page for viewing the source
 	web.Get("/wikidelete/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
 	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))             // Displaying wiki pages
+	web.Get("/wikipages", wikiCP.WrapSimpleContextHandle(we.GenerateListPages(), tvg))  // Listing wiki pages
 	web.Post("/wiki", we.GenerateCreateOrUpdateWiki())                                  // Create or update pages
 	web.Post("/wikideletenow", we.GenerateDeleteWikiNow())                              // Delete pages (admin only)
 	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                        // CSS that is specific for wiki pages
+}
+
+func (we *WikiEngine) ListPages() string {
+	pageids, err := we.wikiState.pages.GetAll()
+	if err != nil {
+		return ""
+	}
+	retval := ""
+	for _, pageid := range pageids {
+		retval += "<a href='/wiki/" + pageid + "'>" + pageid + "</a><br />"
+	}
+	return retval
 }
 
 func (we *WikiEngine) CreatePage(pageid string) string {
@@ -129,6 +142,24 @@ func (we *WikiEngine) HasPage(pageid string) bool {
 		return false
 	}
 	return has
+}
+
+func (we *WikiEngine) GenerateListPages() SimpleContextHandle {
+	return func(ctx *web.Context) string {
+		username := GetBrowserUsername(ctx)
+		if username == "" {
+			return "No user logged in"
+		}
+		if !we.userState.IsLoggedIn(username) {
+			return "Not logged in"
+		}
+		retval := ""
+		retval += "<h2>All wiki pages</h2>"
+		retval += we.ListPages()
+		retval += "<br />"
+		retval += BackButton()
+		return retval
+	}
 }
 
 func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
