@@ -332,7 +332,7 @@ func RegisterCP(basecp BaseCP, state *UserState, url string) *ContentPage {
 }
 
 // Site is ie. "archlinux.no"
-func (ue *UserEngine) ServePages(site) {
+func (ue *UserEngine) ServePages(site string) {
 	state := ue.state
 	web.Post("/register/(.*)", GenerateRegisterUser(state, site))
 	web.Post("/login/(.*)", GenerateLoginUser(state))
