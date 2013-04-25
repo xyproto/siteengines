@@ -43,15 +43,15 @@ type VaktDay struct {
 }
 
 type VaktPerson struct {
-	id       int
-	username string
+	id         int
+	username   string
 	vaktDayIds []int
 }
 
 type VaktPlan struct {
-	id     int
-	year   int
-	period int // Period constant
+	id            int
+	year          int
+	period        int // Period constant
 	vaktPersonIds []int
 }
 
