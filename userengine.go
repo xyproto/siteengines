@@ -181,8 +181,8 @@ func HashPasswordVersion2(password string) string {
 // TODO: Link for "Did you not request this email? Click here" i alle eposter som sendes.
 // TODO: Rate limiting, maximum rate per minute or day
 
-// Register a new user
-func GenerateRegisterUser(state *UserState) WebHandle {
+// Register a new user, site is ie. "archlinux.no"
+func GenerateRegisterUser(state *UserState, site string) WebHandle {
 	return func(ctx *web.Context, val string) string {
 
 		// Password checks
@@ -265,7 +265,7 @@ func GenerateRegisterUser(state *UserState) WebHandle {
 		}
 
 		// Send confirmation email
-		ConfirmationEmail("archlinux.no", "https://archlinux.no/confirm/"+confirmationCode, username, email)
+		ConfirmationEmail(domain, "https://"+site+"/confirm/"+confirmationCode, username, email)
 
 		// Register the need to be confirmed
 		state.AddUnconfirmed(username, confirmationCode)
