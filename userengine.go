@@ -265,7 +265,7 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 		}
 
 		// Send confirmation email
-		ConfirmationEmail(domain, "https://"+site+"/confirm/"+confirmationCode, username, email)
+		ConfirmationEmail(site, "https://"+site+"/confirm/"+confirmationCode, username, email)
 
 		// Register the need to be confirmed
 		state.AddUnconfirmed(username, confirmationCode)
@@ -331,9 +331,10 @@ func RegisterCP(basecp BaseCP, state *UserState, url string) *ContentPage {
 	return cp
 }
 
-func (ue *UserEngine) ServePages() {
+// Site is ie. "archlinux.no"
+func (ue *UserEngine) ServePages(site) {
 	state := ue.state
-	web.Post("/register/(.*)", GenerateRegisterUser(state))
+	web.Post("/register/(.*)", GenerateRegisterUser(state, site))
 	web.Post("/login/(.*)", GenerateLoginUser(state))
 	web.Post("/login", GenerateNoJavascriptMessage())
 	web.Get("/logout", GenerateLogoutCurrentUser(state))
