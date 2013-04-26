@@ -11,17 +11,6 @@ import (
 
 // TODO: Add the ftls pages to the search engine somehow (and the other engines too, like the chat)
 
-const (
-	SPRING = iota
-	SUMMER
-	AUTUMN
-)
-
-type FTLSEngine struct {
-	userState *UserState
-	ftlsState *FTLSState
-}
-
 type TimeRange struct {
 	id                    int
 	date                  time.Time
@@ -29,38 +18,37 @@ type TimeRange struct {
 	toHourNumberInclusive int
 }
 
-type Vakt struct {
-	id       int
-	username string
-	when     TimeRange
+// Changes in the plan is what it's really about
+type VaktChange struct {
+	id        int
+	username  string
+	timeRange int
+	toggleOn  bool
 }
 
-type VaktDay struct {
-	id              int
-	dayOfTheWeek    int
-	fromHour        int
-	toHourInclusive int
-}
-
-type VaktPerson struct {
-	id         int
-	username   string
-	vaktDayIds []int
-}
+// Period
+const (
+	SPRING = iota
+	SUMMER
+	AUTUMN
+)
 
 type VaktPlan struct {
-	id            int
-	year          int
-	period        int // Period constant
-	vaktPersonIds []int
+	id          int
+	year        int
+	period      int // SPRING, SUMMER or AUTUMN
+	vaktChanges []int
+}
+
+type FTLSEngine struct {
+	userState *UserState
+	ftlsState *FTLSState
 }
 
 type FTLSState struct {
 	// FTLS/vakt related
 	timeRanges *simpleredis.HashMap
-	vakt       *simpleredis.HashMap
-	vaktDay    *simpleredis.HashMap
-	vaktPerson *simpleredis.HashMap
+	vaktChange *simpleredis.HashMap
 	vaktPlan   *simpleredis.HashMap
 
 	// Which data is really stored for FTLS?
@@ -73,9 +61,7 @@ func NewFTLSEngine(userState *UserState) *FTLSEngine {
 
 	// FTLS/vakt related
 	ftlsState.timeRanges = simpleredis.NewHashMap(pool, "ftlsTimeRanges")
-	ftlsState.vakt = simpleredis.NewHashMap(pool, "ftlsVakt")
-	ftlsState.vaktDay = simpleredis.NewHashMap(pool, "ftlsVaktDay")
-	ftlsState.vaktPerson = simpleredis.NewHashMap(pool, "ftlsVaktPerson")
+	ftlsState.vaktChange = simpleredis.NewHashMap(pool, "ftlsVaktChange")
 	ftlsState.vaktPlan = simpleredis.NewHashMap(pool, "ftlsVaktPlan")
 
 	ftlsState.pool = pool
@@ -84,6 +70,7 @@ func NewFTLSEngine(userState *UserState) *FTLSEngine {
 
 func (we *FTLSEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	ftlsCP := basecp(we.userState)
+
 	ftlsCP.ContentTitle = "FTLS"
 	ftlsCP.ExtraCSSurls = append(ftlsCP.ExtraCSSurls, "/css/ftls.css")
 
