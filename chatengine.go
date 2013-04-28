@@ -234,11 +234,9 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		retval += ce.chatText(ce.GetLines(username))
 		retval += "</div>"
 		retval += "<br />"
-		retval += JS("var fastestPolling = 500;")
+		retval += JS("var fastestPolling = 400;")
 		retval += JS("var slowestPolling = 64000;")
 		retval += JS("var pollInterval = fastestPolling;")
-		retval += JS("var inactivityCounter = 0;")
-		retval += JS("var inactivityTimeout = 20;") // Chat times out after 20 periods of slowest polling (approximately 20 minutes)
 		retval += JS("var pollID = 0;")
 		// The say() function for submitting text over ajax (a post request), clearing the text intput field and updating the chat text.
 		// Also sets the polling interval to the fastest value.
@@ -260,12 +258,8 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 			    pollInterval *= 2;
 				clearInterval(pollID);
 				pollID = setInterval(UpdateChat, pollInterval);
-			} else {
-				inactivityCounter++;
 			}
-			if inactivityCounter < inactivityTimeout {
-				$.post('/say', {}, function(data) { $('#chatText').html(data); });
-			}
+			$.post('/say', {}, function(data) { $('#chatText').html(data); });
 		}`)
 		retval += JS("pollID = setInterval(UpdateChat, pollInterval);")
 		// A function for setting the preferred number of lines
