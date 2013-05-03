@@ -13,34 +13,22 @@ import (
 
 // TODO: Add the ftls pages to the search engine somehow (and the other engines too, like the chat)
 
-type TimeRange struct {
-	id                    int
-	date                  time.Time
-	fromHourNumber        int
-	toHourNumberInclusive int
-}
-
-// Changes in the plan is what it's really about
-type VaktChange struct {
-	id        int
-	username  string
-	timeRange int
-	toggleOn  bool
-}
-
-// Period
-const (
-	SPRING = iota
-	SUMMER
-	AUTUMN
-)
-
-type VaktPlan struct {
-	id          int
-	year        int
-	period      int // SPRING, SUMMER or AUTUMN
-	vaktChanges []int
-}
+/* Structure
+ *
+ * Three layers:
+ *  workdays
+ *  peopleplans
+ *  hourchanges
+ *
+ * The workdays are automatically generated, no input needed.
+ * A PeoplePlan is which hours, which days, from when to when a person is going to work
+ * An HourChange is a change for a specific hour, from a username (if any), to a username
+ *
+ * There should exists functions that:
+ * Can tell which hours a person actually ended up owning, after changes
+ * Can tell how a day will look, after changes
+ *
+ */
 
 type FTLSEngine struct {
 	userState *UserState
@@ -48,10 +36,9 @@ type FTLSEngine struct {
 }
 
 type FTLSState struct {
-	// FTLS/vakt related
-	timeRanges *simpleredis.HashMap
-	vaktChange *simpleredis.HashMap
-	vaktPlan   *simpleredis.HashMap
+	workdays    *simpleredis.HashMap
+	peopleplans *simpleredis.HashMap
+	hourchanges *simpleredis.HashMap
 
 	// Which data is really stored for FTLS?
 	pool *simpleredis.ConnectionPool // A connection pool for Redis
@@ -61,10 +48,9 @@ func NewFTLSEngine(userState *UserState) *FTLSEngine {
 	pool := userState.GetPool()
 	ftlsState := new(FTLSState)
 
-	// FTLS/vakt related
-	ftlsState.timeRanges = simpleredis.NewHashMap(pool, "ftlsTimeRanges")
-	ftlsState.vaktChange = simpleredis.NewHashMap(pool, "ftlsVaktChange")
-	ftlsState.vaktPlan = simpleredis.NewHashMap(pool, "ftlsVaktPlan")
+	ftlsState.workdays = simpleredis.NewHashMap(pool, "workdays")
+	ftlsState.peopleplans = simpleredis.NewHashMap(pool, "peopleplans")
+	ftlsState.hourchanges = simpleredis.NewHashMap(pool, "hourchanges")
 
 	ftlsState.pool = pool
 	return &FTLSEngine{userState, ftlsState}
@@ -84,32 +70,36 @@ func (we *FTLSEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	web.Get("/css/ftls.css", we.GenerateCSS(ftlsCP.ColorScheme))            // CSS that is specific for ftls pages
 }
 
-// TODO: Find a more clever way to translate everything
+// TODO: Find a more clever system to translate everything
 func MonthName(month int, language string) string {
 	var names []string
 
-	// TODO: Return err or "" instead of panic?
-	if month == 0 {
-		panic("Invalid month number: 0")
+	if month <= 0 {
+		//panic("Invalid month number: 0")
+		return "NIL"
 	} else if month >= 13 {
-		panic("Month number too high: " + strconv.Itoa(month))
+		//panic("Month number too high: " + strconv.Itoa(month))
+		return "NIL"
 	}
 
 	if language == "no" {
-		names = []string{"NIL", "januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"}
+		names = []string{"januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"}
 	} else {
-		names = []string{"NIL", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+		names = []string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
 	}
 
-	return names[month]
+	return names[month-1]
 }
 
 func RenderWeekFrom(year, month, startday int) string {
 	retval := ""
 	retval += "<table>"
 
+	// TODO: Convert year/month/startday back to Time, but in a safe way. Look at the parse function for time.
+
 	// Headers
 	retval += "<tr>"
+	retval += "<td></td>"
 	for day := startday; day < (startday + 7); day++ {
 		retval += "<td><b>" + Num2dd(day) + ". " + MonthName(month, "no") + "</b></td>"
 	}
@@ -120,8 +110,9 @@ func RenderWeekFrom(year, month, startday int) string {
 		retval += "<tr>"
 		// TODO: Use time/date functions for adding days instead, these months can go to day 37...
 		// Each column is a day
+		retval += "<td>kl. " + Num2dd(hour) + ":00</td>"
 		for day := startday; day < (startday + 7); day++ {
-			retval += "<td>kl. " + Num2dd(hour) + ":00</td>"
+			retval += "<td>FREE</td>"
 		}
 		retval += "</tr>"
 	}
@@ -133,21 +124,34 @@ func RenderWeekFrom(year, month, startday int) string {
 // Convert from a number to a double digit string
 func Num2dd(num int) string {
 	s := strconv.Itoa(num)
-	if len(s) == 2 {
-		return s
+	if len(s) == 1 {
+		return "0" + s
 	}
-	return "0" + s
+	return s
 }
 
 func (we *FTLSEngine) GenerateShowFTLS() WebHandle {
-	return func(ctx *web.Context, date string) string {
+	return func(ctx *web.Context, userdate string) string {
+		date := CleanUserInput(userdate)
 		ymd := strings.Split(date, "-")
-		// TODO: Error checking when splitting and converting + user input cleanup
-		year, _ := strconv.Atoi(ymd[0])
-		month, _ := strconv.Atoi(ymd[1])
-		day, _ := strconv.Atoi(ymd[2])
+		if len(ymd) != 3 {
+			return "Invalid yyyy-mm-dd: " + date
+		}
+		year, err := strconv.Atoi(ymd[0])
+		if (err != nil) || (len(ymd[0]) != 4) {
+			return "Invalid year: " + ymd[0]
+		}
+		month, err := strconv.Atoi(ymd[1])
+		if (err != nil) || (len(ymd[1]) > 2) {
+			return "Invalid month: " + ymd[1]
+		}
+		day, err := strconv.Atoi(ymd[2])
+		if (err != nil) || (len(ymd[2]) > 2) {
+			return "Invalid day: " + ymd[2]
+		}
 		retval := ""
 		retval += "<h1>En uke fra " + strconv.Itoa(year) + "-" + Num2dd(month) + "-" + Num2dd(day) + "</h1>"
+
 		retval += RenderWeekFrom(year, month, day)
 		retval += BackButton()
 		return retval

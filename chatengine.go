@@ -245,7 +245,7 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 			pollInterval = fastestPolling;
 			$.post('/say', {said:$('#sayText').val()}, function(data) { $('#sayText').val(''); $('#chatText').html(data); });
 		}`)
-		// Call say() at return 
+		// Call say() at return
 		retval += "<input size='60' id='sayText' name='said' type='text' onKeypress=\"if (event.keyCode == 13) { say($('#sayText').val()); };\">"
 		// Cal say() at the click of the button
 		retval += "<button onClick='say();'>Say</button>"
