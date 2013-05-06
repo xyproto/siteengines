@@ -8,7 +8,7 @@ import (
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/simpleredis"
-	"github.com/xyproto/web"
+	"github.com/hoisie/web"
 )
 
 // An Engine is a specific piewe.of a website

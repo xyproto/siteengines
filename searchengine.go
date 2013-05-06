@@ -6,7 +6,7 @@ import (
 
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/web"
+	"github.com/hoisie/web"
 )
 
 const (
