@@ -1,11 +1,11 @@
 package siteengines
 
 import (
+	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	"github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/simpleredis"
-	"github.com/hoisie/web"
 )
 
 type IPEngine struct {

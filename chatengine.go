@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/simpleredis"
-	"github.com/hoisie/web"
 )
 
 // An Engine is a specific piece of a website

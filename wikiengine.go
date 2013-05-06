@@ -4,11 +4,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hoisie/web"
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/simpleredis"
-	"github.com/hoisie/web"
 )
 
 // An Engine is a specific piewe.of a website

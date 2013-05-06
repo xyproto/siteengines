@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
-	"github.com/hoisie/web"
 )
 
 const (

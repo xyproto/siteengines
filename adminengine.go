@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
-	"github.com/hoisie/web"
 )
 
 // This part handles the "admin" pages

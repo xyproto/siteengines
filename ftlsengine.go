@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/simpleredis"
-	"github.com/hoisie/web"
 )
 
 // TODO: Add the ftls pages to the search engine somehow (and the other engines too, like the chat)
