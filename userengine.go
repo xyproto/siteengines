@@ -6,8 +6,6 @@ package siteengines
 // TODO: The password should be set at confirmation time instead of registration-time in order to make the process clearer and pave the way for invite-only?
 
 import (
-	"crypto/sha256"
-	"io"
 	"math/rand"
 	"strings"
 	"time"
