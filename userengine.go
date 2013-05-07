@@ -50,6 +50,9 @@ func CorrectPassword(state *UserState, username, password string) bool {
 	if err != nil {
 		return false
 	}
+	if passwordHash == HashPasswordVersion3(username, password) {
+		return true
+	}
 	if passwordHash == HashPasswordVersion2(password) {
 		return true
 	}
@@ -162,10 +165,17 @@ func GenerateLoginUser(state *UserState) WebHandle {
 	}
 }
 
+// Old password hashing function
 func HashPasswordVersion2(password string) string {
 	hasher := sha256.New()
-	// TODO: Read up on password hashing
 	io.WriteString(hasher, password+"some salt is better than none")
+	return string(hasher.Sum(nil))
+}
+
+// New password hashing function, with the username as part of the salt
+func HashPasswordVersion3(username, password string) string {
+	hasher := sha256.New()
+	io.WriteString(hasher, password+"hi"+username)
 	return string(hasher.Sum(nil))
 }
 
@@ -242,7 +252,7 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 		}
 
 		// Register the user
-		passwordHash := HashPasswordVersion2(password1)
+		passwordHash := HashPasswordVersion3(username, password1)
 		state.AddUserUnchecked(username, passwordHash, email)
 
 		// Mark user as administrator if that is the case
