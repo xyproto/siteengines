@@ -45,41 +45,6 @@ func (ue *UserEngine) GetState() *UserState {
 	return ue.state
 }
 
-func CorrectPassword(state *UserState, username, password string) bool {
-	passwordHash, err := state.GetPasswordHash(username)
-	if err != nil {
-		return false
-	}
-	if passwordHash == HashPasswordVersion3(username, password) {
-		return true
-	}
-	if passwordHash == HashPasswordVersion2(password) {
-		return true
-	}
-	return false
-}
-
-// Goes through all the confirmationCodes of all the unconfirmed users
-// and checks if this confirmationCode already is in use
-func AlreadyHasConfirmationCode(state *UserState, confirmationCode string) bool {
-	unconfirmedUsernames, err := state.GetAllUnconfirmedUsernames()
-	if err != nil {
-		return false
-	}
-	for _, aUsername := range unconfirmedUsernames {
-		aConfirmationCode, err := state.GetConfirmationCode(aUsername)
-		if err != nil {
-			// If the confirmation code can not be found, that's okay too
-			return false
-		}
-		if confirmationCode == aConfirmationCode {
-			// Found it
-			return true
-		}
-	}
-	return false
-}
-
 // Create a user by adding the username to the list of usernames
 func GenerateConfirmUser(state *UserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
@@ -165,20 +130,6 @@ func GenerateLoginUser(state *UserState) WebHandle {
 	}
 }
 
-// Old password hashing function
-func HashPasswordVersion2(password string) string {
-	hasher := sha256.New()
-	io.WriteString(hasher, password+"some salt is better than none")
-	return string(hasher.Sum(nil))
-}
-
-// New password hashing function, with the username as part of the salt
-func HashPasswordVersion3(username, password string) string {
-	hasher := sha256.New()
-	io.WriteString(hasher, password+"hi"+username)
-	return string(hasher.Sum(nil))
-}
-
 // TODO: Forgot username? Enter email, send username.
 // TODO: Lost confirmation link? Enter mail, Receive confirmation link.
 // TODO: Forgot password? Enter mail, receive reset-password link.
@@ -252,8 +203,7 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 		}
 
 		// Register the user
-		passwordHash := HashPasswordVersion3(username, password1)
-		state.AddUserUnchecked(username, passwordHash, email)
+		state.AddUser(username, password1, email)
 
 		// Mark user as administrator if that is the case
 		if adminuser {
@@ -341,7 +291,7 @@ func RegisterCP(basecp BaseCP, state *UserState, url string) *ContentPage {
 	return cp
 }
 
-// Site is ie. "archlinux.no"
+// Site is ie. "archlinux.no" and used for sending confirmation emails
 func (ue *UserEngine) ServePages(site string) {
 	state := ue.state
 	web.Post("/register/(.*)", GenerateRegisterUser(state, site))
