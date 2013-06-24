@@ -11,9 +11,11 @@ import (
 	"github.com/xyproto/simpleredis"
 )
 
+// TODO: Rename this module to something more generic than FTLS
+// TODO: Use the personplan and moskus module
 // TODO: Add the ftls pages to the search engine somehow (and the other engines too, like the chat)
 
-/* Structure
+/* Structure (TODO: Look at personplan for how the structure ended up)
  *
  * Three layers:
  *  workdays
