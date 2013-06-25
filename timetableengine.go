@@ -8,12 +8,13 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
+	"github.com/xyproto/moskus"
 	"github.com/xyproto/simpleredis"
 )
 
-// TODO: Rename this module to something more generic than FTLS
+// TODO: Rename this module to something more generic than TimeTable
 // TODO: Use the personplan and moskus module
-// TODO: Add the ftls pages to the search engine somehow (and the other engines too, like the chat)
+// TODO: Add the timeTable pages to the search engine somehow (and the other engines too, like the chat)
 
 /* Structure (TODO: Look at personplan for how the structure ended up)
  *
@@ -32,90 +33,106 @@ import (
  *
  */
 
-type FTLSEngine struct {
-	userState *UserState
-	ftlsState *FTLSState
+type TimeTableEngine struct {
+	userState      *UserState
+	timeTableState *TimeTableState
 }
 
-type FTLSState struct {
-	workdays    *simpleredis.HashMap
-	peopleplans *simpleredis.HashMap
-	hourchanges *simpleredis.HashMap
+type TimeTableState struct {
+	// TODO: Find out how you are going to store the plans in Redis
+	plans *simpleredis.HashMap
 
-	// Which data is really stored for FTLS?
 	pool *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewFTLSEngine(userState *UserState) *FTLSEngine {
+func NewTimeTableEngine(userState *UserState) *TimeTableEngine {
 	pool := userState.GetPool()
-	ftlsState := new(FTLSState)
+	timeTableState := new(TimeTableState)
 
-	ftlsState.workdays = simpleredis.NewHashMap(pool, "workdays")
-	ftlsState.peopleplans = simpleredis.NewHashMap(pool, "peopleplans")
-	ftlsState.hourchanges = simpleredis.NewHashMap(pool, "hourchanges")
+	timeTableState.plans = simpleredis.NewHashMap(pool, "plans")
 
-	ftlsState.pool = pool
-	return &FTLSEngine{userState, ftlsState}
+	timeTableState.pool = pool
+	return &TimeTableEngine{userState, timeTableState}
 }
 
-func (we *FTLSEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
-	ftlsCP := basecp(we.userState)
+func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
+	timeTableCP := basecp(tte.userState)
 
-	ftlsCP.ContentTitle = "FTLS"
-	ftlsCP.ExtraCSSurls = append(ftlsCP.ExtraCSSurls, "/css/ftls.css")
+	timeTableCP.ContentTitle = "TimeTable"
+	timeTableCP.ExtraCSSurls = append(timeTableCP.ExtraCSSurls, "/css/timetable.css")
 
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
-	tvg := tvgf(we.userState)
+	tvg := tvgf(tte.userState)
 
-	web.Get("/ftls", we.GenerateFTLSRedirect())                             // Redirect to /ftls/main
-	web.Get("/ftls/(.*)", ftlsCP.WrapWebHandle(we.GenerateShowFTLS(), tvg)) // Displaying ftls pages
-	web.Get("/css/ftls.css", we.GenerateCSS(ftlsCP.ColorScheme))            // CSS that is specific for ftls pages
+	web.Get("/timetable", tte.GenerateTimeTableRedirect())                                  // Redirect to /timeTable/main
+	web.Get("/timetable/(.*)", timeTableCP.WrapWebHandle(tte.GenerateShowTimeTable(), tvg)) // Displaying timeTable pages
+	web.Get("/css/timetable.css", tte.GenerateCSS(timeTableCP.ColorScheme))                 // CSS that is specific for timeTable pages
 }
 
-// TODO: Find a more clever system to translate everything
-func MonthName(month int, language string) string {
-	var names []string
+// TODO: Use the calendar functions in moskus instead of just making up invalid dates
+func RenderWeekFrom(t time.Time) string {
+	//year := t.Year()
+	//month := t.Month()
+	//startday := t.Day()
 
-	if month <= 0 {
-		//panic("Invalid month number: 0")
-		return "NIL"
-	} else if month >= 13 {
-		//panic("Month number too high: " + strconv.Itoa(month))
-		return "NIL"
+	locCode := "nb_NO"
+
+	cal, err := moskus.NewCalendar(locCode, true)
+	if err != nil {
+		panic("Could not create a calendar for locale " + locCode + "!")
 	}
 
-	if language == "no" {
-		names = []string{"januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"}
-	} else {
-		names = []string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
-	}
-
-	return names[month-1]
-}
-
-func RenderWeekFrom(year, month, startday int) string {
 	retval := ""
 	retval += "<table>"
-
-	// TODO: Convert year/month/startday back to Time, but in a safe way. Look at the parse function for time.
 
 	// Headers
 	retval += "<tr>"
 	retval += "<td></td>"
-	for day := startday; day < (startday + 7); day++ {
-		retval += "<td><b>" + Num2dd(day) + ". " + MonthName(month, "no") + "</b></td>"
+
+	// Loop through 7 days from the given date
+	current := t
+	for i := 0; i < 7; i++ {
+
+		// Cell
+		retval += "<td><b>"
+
+		// Contents
+		retval += Num2dd(current.Day()) + ". " + cal.MonthName(current.Month())
+
+		// End of cell
+		retval += "</b></td>"
+
+		// Advance to the next day
+		current = current.AddDate(0, 0, 1)
 	}
+
+	// End of headers
 	retval += "</tr>"
 
 	// Each row is an hour
 	for hour := 8; hour < 22; hour++ {
 		retval += "<tr>"
-		// TODO: Use time/date functions for adding days instead, these months can go to day 37...
+
 		// Each column is a day
 		retval += "<td>kl. " + Num2dd(hour) + ":00</td>"
-		for day := startday; day < (startday + 7); day++ {
-			retval += "<td>FREE</td>"
+
+		// Loop through 7 days from the given date
+		current := t
+		for i := 0; i < 7; i++ {
+
+			// Cell
+			retval += "<td>"
+
+			// Contents
+			retval += "FREE"
+
+			// End of cell
+			retval += "</td>"
+
+			// Advance to the next day
+			current = current.AddDate(0, 0, 1)
 		}
+
 		retval += "</tr>"
 	}
 
@@ -132,7 +149,7 @@ func Num2dd(num int) string {
 	return s
 }
 
-func (we *FTLSEngine) GenerateShowFTLS() WebHandle {
+func (we *TimeTableEngine) GenerateShowTimeTable() WebHandle {
 	return func(ctx *web.Context, userdate string) string {
 		date := CleanUserInput(userdate)
 		ymd := strings.Split(date, "-")
@@ -154,22 +171,24 @@ func (we *FTLSEngine) GenerateShowFTLS() WebHandle {
 		retval := ""
 		retval += "<h1>En uke fra " + strconv.Itoa(year) + "-" + Num2dd(month) + "-" + Num2dd(day) + "</h1>"
 
-		retval += RenderWeekFrom(year, month, day)
+		weekstart := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+
+		retval += RenderWeekFrom(weekstart)
 		retval += BackButton()
 		return retval
 	}
 }
 
-func (we *FTLSEngine) GenerateFTLSRedirect() SimpleContextHandle {
+func (we *TimeTableEngine) GenerateTimeTableRedirect() SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		t := time.Now()
 		// Redirect to the current date on the form yyyy-mm-dd
-		ctx.SetHeader("Refresh", "0; url=/ftls/"+t.String()[:10], true)
+		ctx.SetHeader("Refresh", "0; url=/timetable/"+t.String()[:10], true)
 		return ""
 	}
 }
 
-func (we *FTLSEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
+func (tte *TimeTableEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		ctx.ContentType("css")
 		return `
