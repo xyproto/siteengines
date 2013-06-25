@@ -13,6 +13,8 @@ import (
 	"github.com/xyproto/simpleredis"
 )
 
+// TODO: Simple font-symbol buttons for browsing backwards and forwards a day (or week): << < > >>
+
 // TODO: Rename this module to something more generic than TimeTable
 // TODO: Use the personplan and moskus module
 // TODO: Add the timeTable pages to the search engine somehow (and the other engines too, like the chat)
