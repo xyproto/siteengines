@@ -10,6 +10,7 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/moskus"
 	"github.com/xyproto/simpleredis"
+	"github.com/xyproto/personplan"
 )
 
 // TODO: Rename this module to something more generic than TimeTable
@@ -69,11 +70,32 @@ func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	web.Get("/css/timetable.css", tte.GenerateCSS(timeTableCP.ColorScheme))                 // CSS that is specific for timeTable pages
 }
 
+func AllPlansDummyContent() *personplan.Plans {
+	ppAlexander := personplan.NewPersonPlan("Alexander")
+	ppAlexander.AddWorkday(time.Monday, 8, 15, "KNH")     // monday, from 8, up to 15
+	ppAlexander.AddWorkday(time.Wednesday, 12, 17, "KOH") // wednesday, from 12, up to 17
+
+	ppBob := personplan.NewPersonPlan("Bob")
+	ppBob.AddWorkday(time.Monday, 9, 11, "KOH")   // monday, from 9, up to 11
+	ppBob.AddWorkday(time.Thursday, 8, 10, "KNH") // wednesday, from 8, up to 10
+
+	periodplan := personplan.NewSemesterPlan(2013, 1, 8)
+	periodplan.AddPersonPlan(ppAlexander)
+	periodplan.AddPersonPlan(ppBob)
+
+	allPlans := personplan.NewPlans()
+	allPlans.AddSemesterPlan(periodplan)
+
+	return allPlans
+}
+
 func RenderWeekFrom(t time.Time, locale string) string {
+
+	allPlans := AllPlansDummyContent()
 
 	cal, err := moskus.NewCalendar(locale, true)
 	if err != nil {
-		panic("Could not create a calendar for locale " + locCode + "!")
+		panic("Could not create a calendar for locale " + locale + "!")
 	}
 
 	retval := ""
@@ -114,14 +136,13 @@ func RenderWeekFrom(t time.Time, locale string) string {
 		current := t
 		for i := 0; i < 7; i++ {
 
-			// Cell
-			retval += "<td>"
-
-			// Contents
-			retval += "FREE"
-
-			// End of cell
-			retval += "</td>"
+			// Cell with contents
+			red, desc, _ := cal.RedDay(current)
+			if red {
+				retval += "<td bgcolor='#ffb0b0'>" + desc + "</td>"
+			} else {
+				retval += "<td>" + allPlans.HTMLHourEvents(current) + "</td>"
+			}
 
 			// Advance to the next day
 			current = current.AddDate(0, 0, 1)
