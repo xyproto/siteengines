@@ -69,15 +69,9 @@ func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	web.Get("/css/timetable.css", tte.GenerateCSS(timeTableCP.ColorScheme))                 // CSS that is specific for timeTable pages
 }
 
-// TODO: Use the calendar functions in moskus instead of just making up invalid dates
-func RenderWeekFrom(t time.Time) string {
-	//year := t.Year()
-	//month := t.Month()
-	//startday := t.Day()
+func RenderWeekFrom(t time.Time, locale string) string {
 
-	locCode := "nb_NO"
-
-	cal, err := moskus.NewCalendar(locCode, true)
+	cal, err := moskus.NewCalendar(locale, true)
 	if err != nil {
 		panic("Could not create a calendar for locale " + locCode + "!")
 	}
@@ -173,7 +167,7 @@ func (we *TimeTableEngine) GenerateShowTimeTable() WebHandle {
 
 		weekstart := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 
-		retval += RenderWeekFrom(weekstart)
+		retval += RenderWeekFrom(weekstart, "nb_NO")
 		retval += BackButton()
 		return retval
 	}
