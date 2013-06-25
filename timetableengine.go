@@ -141,7 +141,7 @@ func RenderWeekFrom(t time.Time, locale string) string {
 			if red {
 				retval += "<td bgcolor='#ffb0b0'>" + desc + "</td>"
 			} else {
-				retval += "<td>" + allPlans.HTMLHourEvents(current) + "</td>"
+				retval += "<td>" + allPlans.HTMLHourEvents(current) + ", " + current.String()[:10] + "</td>"
 			}
 
 			// Advance to the next day
