@@ -9,8 +9,8 @@ import (
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/moskus"
-	"github.com/xyproto/simpleredis"
 	"github.com/xyproto/personplan"
+	"github.com/xyproto/simpleredis"
 )
 
 // TODO: Rename this module to something more generic than TimeTable
@@ -132,8 +132,9 @@ func RenderWeekFrom(t time.Time, locale string) string {
 		// Each column is a day
 		retval += "<td>kl. " + Num2dd(hour) + ":00</td>"
 
-		// Loop through 7 days from the given date
-		current := t
+		// Loop through 7 days from the given date, while using the correct hour
+		current := time.Date(t.Year(), t.Month(), t.Day(), hour, 0, 0, 0, time.UTC)
+
 		for i := 0; i < 7; i++ {
 
 			// Cell with contents
@@ -141,7 +142,7 @@ func RenderWeekFrom(t time.Time, locale string) string {
 			if red {
 				retval += "<td bgcolor='#ffb0b0'>" + desc + "</td>"
 			} else {
-				retval += "<td>" + allPlans.HTMLHourEvents(current) + ", " + current.String()[:10] + "</td>"
+				retval += "<td>" + allPlans.HTMLHourEvents(current) + "</td>"
 			}
 
 			// Advance to the next day
