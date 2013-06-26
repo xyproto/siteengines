@@ -35,12 +35,12 @@ var (
 	}
 )
 
-func NewWikiEngine(userState *UserState, dbindex int) *WikiEngine {
+func NewWikiEngine(userState *UserState) *WikiEngine {
 	pool := userState.GetPool()
 	wikiState := new(WikiState)
 
 	wikiState.pages = simpleredis.NewHashMap(pool, "pages")
-	wikiState.pages.SelectDatabase(dbindex)
+	wikiState.pages.SelectDatabase(userState.dbindex)
 
 	wikiState.pool = pool
 	return &WikiEngine{userState, wikiState}

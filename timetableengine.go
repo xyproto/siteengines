@@ -48,12 +48,12 @@ type TimeTableState struct {
 	pool *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewTimeTableEngine(userState *UserState, dbindex int) *TimeTableEngine {
+func NewTimeTableEngine(userState *UserState) *TimeTableEngine {
 	pool := userState.GetPool()
 	timeTableState := new(TimeTableState)
 
 	timeTableState.plans = simpleredis.NewHashMap(pool, "plans")
-	timeTableState.plans.SelectDatabase(dbindex)
+	timeTableState.plans.SelectDatabase(userState.dbindex)
 
 	timeTableState.pool = pool
 	return &TimeTableEngine{userState, timeTableState}
