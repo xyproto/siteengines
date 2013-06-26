@@ -26,12 +26,19 @@ type ChatState struct {
 	pool     *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewChatEngine(userState *UserState) *ChatEngine {
+func NewChatEngine(userState *UserState, dbindex int) *ChatEngine {
 	pool := userState.GetPool()
 	chatState := new(ChatState)
+
 	chatState.active = simpleredis.NewSet(pool, "active")
+	chatState.active.SelectDatabase(dbindex)
+
 	chatState.said = simpleredis.NewList(pool, "said")
+	chatState.said.SelectDatabase(dbindex)
+
 	chatState.userInfo = simpleredis.NewHashMap(pool, "userInfo") // lastSeen.time is an encoded timestamp for when the user was last seen chatting
+	chatState.userInfo.SelectDatabase(dbindex)
+
 	chatState.pool = pool
 	return &ChatEngine{userState, chatState}
 }
