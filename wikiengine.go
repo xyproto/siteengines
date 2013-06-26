@@ -40,7 +40,7 @@ func NewWikiEngine(userState *UserState) *WikiEngine {
 	wikiState := new(WikiState)
 
 	wikiState.pages = simpleredis.NewHashMap(pool, "pages")
-	wikiState.pages.SelectDatabase(userState.dbindex)
+	wikiState.pages.SelectDatabase(userState.GetDatabaseIndex())
 
 	wikiState.pool = pool
 	return &WikiEngine{userState, wikiState}

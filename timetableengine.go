@@ -53,7 +53,7 @@ func NewTimeTableEngine(userState *UserState) *TimeTableEngine {
 	timeTableState := new(TimeTableState)
 
 	timeTableState.plans = simpleredis.NewHashMap(pool, "plans")
-	timeTableState.plans.SelectDatabase(userState.dbindex)
+	timeTableState.plans.SelectDatabase(userState.GetDatabaseIndex())
 
 	timeTableState.pool = pool
 	return &TimeTableEngine{userState, timeTableState}
