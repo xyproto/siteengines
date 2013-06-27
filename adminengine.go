@@ -1,13 +1,13 @@
 package siteengines
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
+	"github.com/xyproto/symbolhash"
 )
 
 // This part handles the "admin" pages
@@ -77,7 +77,7 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 					if strings.HasPrefix(passwordHash, "abc123") {
 						s += "<td>" + passwordHash + " (<a href=\"/fixpassword/" + username + "\">fix</a>)</td>"
 					} else {
-						s += "<td>length " + strconv.Itoa(len(passwordHash)) + "</td>"
+						s += "<td>" + symbolhash.New(passwordHash, 16).String() + "</td>"
 					}
 				}
 				s += "</tr>"
