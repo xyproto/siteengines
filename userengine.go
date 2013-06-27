@@ -222,6 +222,17 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 			}
 		}
 
+		// If registering the admin user (first user on the system), don't send a confirmation email, just register it
+		if adminuser {
+
+			// Mark user as confirmed
+			state.MarkConfirmed(username)
+
+			// Redirect
+			return instapage.MessageOKurl("Registration complete", "Thanks for registering, the admin user has been created.", "/login")
+
+		}
+
 		// Send confirmation email
 		ConfirmationEmail(site, "https://"+site+"/confirm/"+confirmationCode, username, email)
 
