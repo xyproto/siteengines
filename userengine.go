@@ -266,7 +266,7 @@ func GenerateLogoutCurrentUser(state *UserState) SimpleContextHandle {
 
 func GenerateNoJavascriptMessage() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		return instapage.MessageOKback("JavaScript error", "Cookies and Javascriåt must be enabled.<br />Older browsers might be supported in the future.")
+		return instapage.MessageOKback("JavaScript error", "Cookies and Javascript must be enabled.<br />Older browsers might be supported in the future.")
 	}
 }
 
@@ -304,6 +304,7 @@ func RegisterCP(basecp BaseCP, state *UserState, url string) *ContentPage {
 func (ue *UserEngine) ServePages(site string) {
 	state := ue.state
 	web.Post("/register/(.*)", GenerateRegisterUser(state, site))
+	web.Post("/register", GenerateNoJavascriptMessage())
 	web.Post("/login/(.*)", GenerateLoginUser(state))
 	web.Post("/login", GenerateNoJavascriptMessage())
 	web.Get("/logout", GenerateLogoutCurrentUser(state))
