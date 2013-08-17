@@ -98,7 +98,7 @@ func GenerateSearchHandle(pc PageCollection) WebHandle {
 			startTime := time.Now()
 			urls, titles, searchedFor, foundWhere := searchResults(searchText, pc)
 			elapsed := time.Since(startTime)
-			page, p := CowboyTag("p")
+			page, p := StandaloneTag("p")
 			if len(urls) == 0 {
 				p.AddContent("No results found")
 				p.AddNewTag("br")
