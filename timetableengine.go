@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/hoisie/web"
-	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/moskus"
 	"github.com/xyproto/personplan"
 	"github.com/xyproto/simpleredis"
+	. "github.com/xyproto/webhandle"
 )
 
 // TODO: Simple font-symbol buttons for browsing backwards and forwards a day (or week): << < > >>

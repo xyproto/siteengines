@@ -9,6 +9,7 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/simpleredis"
+	. "github.com/xyproto/webhandle"
 )
 
 // An Engine is a specific piece of a website

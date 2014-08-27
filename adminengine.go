@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/hoisie/web"
-	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/symbolhash"
+	. "github.com/xyproto/webhandle"
 )
 
 // This part handles the "admin" pages

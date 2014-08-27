@@ -9,6 +9,7 @@ import (
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/simpleredis"
+	. "github.com/xyproto/webhandle"
 )
 
 // An Engine is a specific piewe.of a website

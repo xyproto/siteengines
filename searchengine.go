@@ -7,6 +7,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/browserspeak"
 	. "github.com/xyproto/genericsite"
+	. "github.com/xyproto/webhandle"
 )
 
 const (
@@ -108,9 +109,9 @@ func GenerateSearchHandle(pc PageCollection) WebHandle {
 						// Add url-matches first, then title-matches then text-matches
 						if foundWhere[i] == foundType {
 							a := p.AddNewTag("a")
-							a.AddAttr("id", "searchresult")
+							a.AddAttrib("id", "searchresult")
 							a.AddStyle("color", "red")
-							a.AddAttr("href", url)
+							a.AddAttrib("href", url)
 							a.AddContent(titles[i])
 							font := p.AddNewTag("font")
 							if foundType == FOUND_IN_URL {
