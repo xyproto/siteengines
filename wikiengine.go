@@ -6,7 +6,7 @@ import (
 
 	"github.com/hoisie/web"
 	"github.com/russross/blackfriday"
-	. "github.com/xyproto/browserspeak"
+	. "github.com/xyproto/onthefly"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
