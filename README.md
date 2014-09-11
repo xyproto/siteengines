@@ -17,7 +17,7 @@ So far, there's:
 
 Things are working, but are not "polished" and there is plenty of further work that could be done.
 
-I wish to transition into using [negroni](https://github.com/codegangsta/negroni) and [permissions](https://github.com/xyproto/permissions).
+I wish to transition into using [negroni](https://github.com/codegangsta/negroni) instead of web.go.
 
 
 General information
