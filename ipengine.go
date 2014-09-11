@@ -2,27 +2,25 @@ package siteengines
 
 import (
 	"github.com/hoisie/web"
-	"github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
+	"github.com/xyproto/permissions"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
 type IPEngine struct {
-	userState *genericsite.UserState
-	data      *simpleredis.List
+	state *permissions.UserState
+	data  *simpleredis.List
 }
 
-func NewIPEngine(userState *genericsite.UserState) *IPEngine {
-
-	pool := userState.GetPool()
+func NewIPEngine(state *permissions.UserState) *IPEngine {
 
 	// Create a RedisList for storing IP adresses
-	ips := simpleredis.NewList(pool, "IPs")
+	ips := simpleredis.NewList(state.GetPool(), "IPs")
 
 	ipEngine := new(IPEngine)
 	ipEngine.data = ips
-	ipEngine.userState = userState
+	ipEngine.state = state
 
 	return ipEngine
 }
@@ -41,11 +39,11 @@ func (ie *IPEngine) GenerateSetIP() WebHandle {
 // Get all the stored IP adresses and generate a page for it
 func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
 	return func(ctx *web.Context, val string) string {
-		username := genericsite.GetBrowserUsername(ctx)
+		username := ie.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !ie.userState.IsLoggedIn(username) {
+		if !ie.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		s := ""
@@ -62,11 +60,11 @@ func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
 // Get the last stored IP adress and generate a page for it
 func (ie *IPEngine) GenerateGetLastIP() WebHandle {
 	return func(ctx *web.Context, val string) string {
-		username := genericsite.GetBrowserUsername(ctx)
+		username := ie.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !ie.userState.IsLoggedIn(username) {
+		if !ie.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		s := ""

@@ -8,6 +8,7 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
+	"github.com/xyproto/permissions"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -16,18 +17,18 @@ import (
 // This part handles the "chat" pages
 
 type ChatEngine struct {
-	userState *UserState
+	state     *permissions.UserState
 	chatState *ChatState
 }
 
 type ChatState struct {
-	active   *simpleredis.Set            // A list of all users that are in the chat, must correspond to the users in UserState.users
+	active   *simpleredis.Set            // A list of all users that are in the chat, must correspond to the users in permissions.UserState.users
 	said     *simpleredis.List           // A list of everything that has been said so far
 	userInfo *simpleredis.HashMap        // Info about a chat user - last seen, preferred number of lines etc
 	pool     *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewChatEngine(userState *UserState) *ChatEngine {
+func NewChatEngine(userState *permissions.UserState) *ChatEngine {
 	pool := userState.GetPool()
 	dbindex := userState.GetDatabaseIndex()
 
@@ -47,12 +48,12 @@ func NewChatEngine(userState *UserState) *ChatEngine {
 }
 
 func (ce *ChatEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
-	chatCP := basecp(ce.userState)
+	chatCP := basecp(ce.state)
 	chatCP.ContentTitle = "Chat"
 	chatCP.ExtraCSSurls = append(chatCP.ExtraCSSurls, "/css/chat.css")
 
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
-	tvg := tvgf(ce.userState)
+	tvg := tvgf(ce.state)
 
 	web.Get("/chat", chatCP.WrapSimpleContextHandle(ce.GenerateChatCurrentUser(), tvg))
 	web.Post("/say", ce.GenerateSayCurrentUser())
@@ -140,12 +141,12 @@ func (ce *ChatEngine) IsChatting(username string) bool {
 		}
 	}
 	// TODO: If the user was last seen more than N minutes ago, set as not chatting and return false
-	return ce.userState.GetBooleanField(username, "chatting")
+	return ce.state.GetBooleanField(username, "chatting")
 }
 
 // Set "chatting" to "true" or "false" for a given user
 func (ce *ChatEngine) SetChatting(username string, val bool) {
-	ce.userState.SetBooleanField(username, "chatting", val)
+	ce.state.SetBooleanField(username, "chatting", val)
 }
 
 func (ce *ChatEngine) JoinChat(username string) {
@@ -211,11 +212,11 @@ func (ce *ChatEngine) chatText(lines int) string {
 
 func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := ce.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !ce.userState.IsLoggedIn(username) {
+		if !ce.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 
@@ -288,11 +289,11 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 
 func (ce *ChatEngine) GenerateSayCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := ce.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !ce.userState.IsLoggedIn(username) {
+		if !ce.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		if !ce.IsChatting(username) {
@@ -313,11 +314,11 @@ func (ce *ChatEngine) GenerateSayCurrentUser() SimpleContextHandle {
 
 func (ce *ChatEngine) GenerateGetChatLinesCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := ce.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !ce.userState.IsLoggedIn(username) {
+		if !ce.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		if !ce.IsChatting(username) {
@@ -331,11 +332,11 @@ func (ce *ChatEngine) GenerateGetChatLinesCurrentUser() SimpleContextHandle {
 
 func (ce *ChatEngine) GenerateSetChatLinesCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := ce.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !ce.userState.IsLoggedIn(username) {
+		if !ce.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		if !ce.IsChatting(username) {

@@ -8,6 +8,7 @@ import (
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
+	"github.com/xyproto/permissions"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -20,7 +21,7 @@ import (
 // TODO: Add the wiki pages to the search engine somehow (and the other engines too, like the chat)
 
 type WikiEngine struct {
-	userState *UserState
+	state     *permissions.UserState
 	wikiState *WikiState
 }
 
@@ -36,24 +37,24 @@ var (
 	}
 )
 
-func NewWikiEngine(userState *UserState) *WikiEngine {
-	pool := userState.GetPool()
+func NewWikiEngine(state *permissions.UserState) *WikiEngine {
+	pool := state.GetPool()
+
 	wikiState := new(WikiState)
-
 	wikiState.pages = simpleredis.NewHashMap(pool, "pages")
-	wikiState.pages.SelectDatabase(userState.GetDatabaseIndex())
-
+	wikiState.pages.SelectDatabase(state.GetDatabaseIndex())
 	wikiState.pool = pool
-	return &WikiEngine{userState, wikiState}
+
+	return &WikiEngine{state, wikiState}
 }
 
 func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
-	wikiCP := basecp(we.userState)
+	wikiCP := basecp(we.state)
 	wikiCP.ContentTitle = "Wiki"
 	wikiCP.ExtraCSSurls = append(wikiCP.ExtraCSSurls, "/css/wiki.css")
 
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
-	tvg := tvgf(we.userState)
+	tvg := tvgf(we.state)
 
 	web.Get("/wiki", we.GenerateWikiRedirect())                                         // Redirect to /wiki/main
 	web.Get("/wikiedit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
@@ -150,11 +151,11 @@ func (we *WikiEngine) HasPage(pageid string) bool {
 
 func (we *WikiEngine) GenerateListPages() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := we.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !we.userState.IsLoggedIn(username) {
+		if !we.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		retval := ""
@@ -168,11 +169,11 @@ func (we *WikiEngine) GenerateListPages() SimpleContextHandle {
 
 func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := we.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !we.userState.IsLoggedIn(username) {
+		if !we.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 		pageid := CleanUserInput(ctx.Params["id"])
@@ -190,14 +191,14 @@ func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 
 func (we *WikiEngine) GenerateDeleteWikiNow() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := we.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !we.userState.IsLoggedIn(username) {
+		if !we.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
-		if !we.userState.IsAdmin(username) {
+		if !we.state.IsAdmin(username) {
 			return "Not admin"
 		}
 		pageid := CleanUserInput(ctx.Params["id"])
@@ -218,11 +219,11 @@ func (we *WikiEngine) GenerateDeleteWikiNow() SimpleContextHandle {
 
 func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := GetBrowserUsername(ctx)
+		username := we.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !we.userState.IsLoggedIn(username) {
+		if !we.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 
@@ -246,11 +247,11 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 
 func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := GetBrowserUsername(ctx)
+		username := we.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !we.userState.IsLoggedIn(username) {
+		if !we.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
 
@@ -270,14 +271,14 @@ func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 
 func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := GetBrowserUsername(ctx)
+		username := we.state.GetUsername(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
-		if !we.userState.IsLoggedIn(username) {
+		if !we.state.IsLoggedIn(username) {
 			return "Not logged in"
 		}
-		if !we.userState.IsAdmin(username) {
+		if !we.state.IsAdmin(username) {
 			return "Must be admin"
 		}
 
@@ -305,8 +306,8 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 			retval += "<h1>No such page: " + pageid + "</h1>"
 		}
 		// Display edit or create buttons if the user is logged in
-		username := GetBrowserUsername(ctx)
-		if (username != "") && we.userState.IsLoggedIn(username) {
+		username := we.state.GetUsername(ctx.Request)
+		if (username != "") && we.state.IsLoggedIn(username) {
 			if we.HasPage(pageid) {
 				// Page actions for regular users for pages that exists and are not the main page
 				if pageid != "main" {
@@ -316,7 +317,7 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 					retval += JS(OnClick("#btnDelete", Redirect("/wikidelete/"+pageid)))
 				} else {
 					// Page actions for administrators on the main page
-					if we.userState.IsAdmin(username) {
+					if we.state.IsAdmin(username) {
 						retval += "<br /><button id='btnEdit'>Edit</button>"
 						retval += JS(OnClick("#btnEdit", Redirect("/wikiedit/"+pageid)))
 					}

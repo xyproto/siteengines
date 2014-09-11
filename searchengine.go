@@ -7,6 +7,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
+	"github.com/xyproto/permissions"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -147,7 +148,7 @@ func GenerateSearchCSS(cs *ColorScheme) SimpleContextHandle {
 	}
 }
 
-func ServeSearchPages(basecp BaseCP, state *UserState, cps PageCollection, cs *ColorScheme, tpg TemplateValueGenerator) {
+func ServeSearchPages(basecp BaseCP, state *permissions.UserState, cps PageCollection, cs *ColorScheme, tpg TemplateValueGenerator) {
 	searchCP := basecp(state)
 	searchCP.ContentTitle = "Search results"
 	searchCP.ExtraCSSurls = append(searchCP.ExtraCSSurls, "/css/search.css")

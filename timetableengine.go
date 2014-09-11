@@ -8,6 +8,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/moskus"
+	"github.com/xyproto/permissions"
 	"github.com/xyproto/personplan"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
@@ -37,7 +38,7 @@ import (
  */
 
 type TimeTableEngine struct {
-	userState      *UserState
+	state          *permissions.UserState
 	timeTableState *TimeTableState
 }
 
@@ -48,25 +49,25 @@ type TimeTableState struct {
 	pool *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewTimeTableEngine(userState *UserState) *TimeTableEngine {
-	pool := userState.GetPool()
+func NewTimeTableEngine(state *permissions.UserState) *TimeTableEngine {
+	pool := state.GetPool()
 	timeTableState := new(TimeTableState)
 
 	timeTableState.plans = simpleredis.NewHashMap(pool, "plans")
-	timeTableState.plans.SelectDatabase(userState.GetDatabaseIndex())
+	timeTableState.plans.SelectDatabase(state.GetDatabaseIndex())
 
 	timeTableState.pool = pool
-	return &TimeTableEngine{userState, timeTableState}
+	return &TimeTableEngine{state, timeTableState}
 }
 
 func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
-	timeTableCP := basecp(tte.userState)
+	timeTableCP := basecp(tte.state)
 
 	timeTableCP.ContentTitle = "TimeTable"
 	timeTableCP.ExtraCSSurls = append(timeTableCP.ExtraCSSurls, "/css/timetable.css")
 
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
-	tvg := tvgf(tte.userState)
+	tvg := tvgf(tte.state)
 
 	web.Get("/timetable", tte.GenerateTimeTableRedirect())                                  // Redirect to /timeTable/main
 	web.Get("/timetable/(.*)", timeTableCP.WrapWebHandle(tte.GenerateShowTimeTable(), tvg)) // Displaying timeTable pages

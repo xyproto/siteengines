@@ -5,6 +5,7 @@ package siteengines
 import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
+	"github.com/xyproto/permissions"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -12,23 +13,22 @@ import (
 type UnderskogEngine struct {
 	//plans *simpleredis.HashMap
 
-	pool      *simpleredis.ConnectionPool // A connection pool for Redis
-	userState *UserState
+	pool  *simpleredis.ConnectionPool // A connection pool for Redis
+	state *permissions.UserState
 }
 
-func NewUnderskogEngine(userState *UserState) *UnderskogEngine {
-	pool := userState.GetPool()
-	return &UnderskogEngine{pool, userState}
+func NewUnderskogEngine(state *permissions.UserState) *UnderskogEngine {
+	return &UnderskogEngine{state.GetPool(), state}
 }
 
 func (ue *UnderskogEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
-	underskogCP := basecp(ue.userState)
+	underskogCP := basecp(ue.state)
 
 	underskogCP.ContentTitle = "Mosebark"
 	underskogCP.ExtraCSSurls = append(underskogCP.ExtraCSSurls, "/css/mosebark.css")
 
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
-	tvg := tvgf(ue.userState)
+	tvg := tvgf(ue.state)
 
 	web.Get("/mosebark", underskogCP.WrapWebHandle(ue.GenerateMessages(), tvg))
 	web.Get("/css/mosebark.css", ue.GenerateCSS(underskogCP.ColorScheme))

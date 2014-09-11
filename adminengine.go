@@ -6,6 +6,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
+	"github.com/xyproto/permissions"
 	"github.com/xyproto/symbolhash"
 	. "github.com/xyproto/webhandle"
 )
@@ -13,10 +14,10 @@ import (
 // This part handles the "admin" pages
 
 type AdminEngine struct {
-	state *UserState
+	state *permissions.UserState
 }
 
-func NewAdminEngine(state *UserState) *AdminEngine {
+func NewAdminEngine(state *permissions.UserState) *AdminEngine {
 	return &AdminEngine{state}
 }
 
@@ -38,9 +39,9 @@ func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 
 // TODO: Log and graph when people visit pages and when people contribute content
 // This one is wrapped by ServeAdminPages
-func GenerateAdminStatus(state *UserState) SimpleContextHandle {
+func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		if !state.AdminRights(ctx) {
+		if !state.AdminRights(ctx.Request) {
 			return "<div class=\"no\">Not logged in as Administrator</div>"
 		}
 
@@ -109,12 +110,12 @@ func GenerateAdminStatus(state *UserState) SimpleContextHandle {
 	}
 }
 
-func GenerateStatusCurrentUser(state *UserState) SimpleContextHandle {
+func GenerateStatusCurrentUser(state *permissions.UserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		if !state.AdminRights(ctx) {
+		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Status", "Not logged in as Administrator")
 		}
-		username := GetBrowserUsername(ctx)
+		username := state.GetUsername(ctx.Request)
 		if username == "" {
 			return instapage.MessageOKback("Current user status", "No user logged in")
 		}
@@ -129,7 +130,7 @@ func GenerateStatusCurrentUser(state *UserState) SimpleContextHandle {
 	}
 }
 
-func GenerateStatusUser(state *UserState) WebHandle {
+func GenerateStatusUser(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if username == "" {
 			return instapage.MessageOKback("Status", "No username given")
@@ -150,9 +151,9 @@ func GenerateStatusUser(state *UserState) WebHandle {
 }
 
 // Remove an unconfirmed user
-func GenerateRemoveUnconfirmedUser(state *UserState) WebHandle {
+func GenerateRemoveUnconfirmedUser(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
-		if !state.AdminRights(ctx) {
+		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
 		}
 
@@ -186,9 +187,9 @@ func GenerateRemoveUnconfirmedUser(state *UserState) WebHandle {
 
 // TODO: Undo for removing users
 // Remove a user
-func GenerateRemoveUser(state *UserState) WebHandle {
+func GenerateRemoveUser(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
-		if !state.AdminRights(ctx) {
+		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Remove user", "Not logged in as Administrator")
 		}
 
@@ -206,9 +207,9 @@ func GenerateRemoveUser(state *UserState) WebHandle {
 	}
 }
 
-func GenerateAllUsernames(state *UserState) SimpleContextHandle {
+func GenerateAllUsernames(state *permissions.UserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		if !state.AdminRights(ctx) {
+		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("List usernames", "Not logged in as Administrator")
 		}
 		s := ""
@@ -222,37 +223,9 @@ func GenerateAllUsernames(state *UserState) SimpleContextHandle {
 	}
 }
 
-//func GenerateGetCookie(state *UserState) SimpleContextHandle {
-//	return func(ctx *web.Context) string {
-//		if !state.AdminRights(ctx) {
-//			return instapage.MessageOKback("Get cookie", "Not logged in as Administrator")
-//		}
-//		username := GetBrowserUsername(ctx)
-//		return instapage.MessageOKback("Get cookie", "Cookie: username = "+username)
-//	}
-//}
-//
-//func GenerateSetCookie(state *UserState) WebHandle {
-//	return func(ctx *web.Context, username string) string {
-//		if !state.AdminRights(ctx) {
-//			return instapage.MessageOKback("Set cookie", "Not logged in as Administrator")
-//		}
-//		if username == "" {
-//			return instapage.MessageOKback("Set cookie", "Can't set cookie for empty username")
-//		}
-//		if !state.HasUser(username) {
-//			return instapage.MessageOKback("Set cookie", "Can't store cookie for non-existsing user")
-//		}
-//		// Create a cookie that lasts for one hour,
-//		// this is the equivivalent of a session for a given username
-//		ctx.SetSecureCookiePath("user", username, 3600, "/")
-//		return instapage.MessageOKback("Set cookie", "Cookie stored: user = "+username+".")
-//	}
-//}
-
-func GenerateToggleAdmin(state *UserState) WebHandle {
+func GenerateToggleAdmin(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
-		if !state.AdminRights(ctx) {
+		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Admin toggle", "Not logged in as Administrator")
 		}
 		if username == "" {
@@ -274,34 +247,6 @@ func GenerateToggleAdmin(state *UserState) WebHandle {
 	}
 }
 
-// This is now deprecated. Keep it around only as a nice example of fixing user values that worked.
-//func GenerateFixPassword(state *UserState) WebHandle {
-//	return func(ctx *web.Context, username string) string {
-//		if !state.AdminRights(ctx) {
-//			return instapage.MessageOKback("Fix password", "Not logged in as Administrator")
-//		}
-//		if username == "" {
-//			return instapage.MessageOKback("Fix password", "Can't fix empty username")
-//		}
-//		if !state.HasUser(username) {
-//			return instapage.MessageOKback("Fix password", "Can't fix non-existing user")
-//		}
-//		password := ""
-//		passwordHash, err := state.users.Get(username, "password")
-//		if err != nil {
-//			return instapage.MessageOKback("Fix password", "Could not retrieve password hash")
-//		}
-//		if strings.HasPrefix(passwordHash, "abc123") {
-//			if strings.HasSuffix(passwordHash, "abc123") {
-//				password = passwordHash[6 : len(passwordHash)-6]
-//			}
-//		}
-//		newPasswordHash := HashPasswordVersion2(password)
-//		state.users.Set(username, "password", newPasswordHash)
-//		return instapage.MessageOKurl("Fix password", "Ok, upgraded the password hash for "+username+" to version 2.", "/admin")
-//	}
-//}
-
 func (ae *AdminEngine) serveSystem() {
 	state := ae.state
 
@@ -314,9 +259,6 @@ func (ae *AdminEngine) serveSystem() {
 	web.Get("/removeunconfirmed/(.*)", GenerateRemoveUnconfirmedUser(state))
 	web.Get("/users/(.*)", GenerateAllUsernames(state))
 	web.Get("/admintoggle/(.*)", GenerateToggleAdmin(state))
-	//web.Get("/cookie/get", GenerateGetCookie(state))
-	//web.Get("/cookie/set/(.*)", GenerateSetCookie(state))
-	//web.Get("/fixpassword/(.*)", GenerateFixPassword(state))
 }
 
 func (ae *AdminEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {

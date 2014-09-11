@@ -14,6 +14,7 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
+	"github.com/xyproto/permissions"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -26,10 +27,10 @@ const (
 )
 
 type UserEngine struct {
-	state *UserState
+	state *permissions.UserState
 }
 
-func NewUserEngine(userState *UserState) *UserEngine {
+func NewUserEngine(userState *permissions.UserState) *UserEngine {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
@@ -40,12 +41,12 @@ func NewUserEngine(userState *UserState) *UserEngine {
 	return &UserEngine{userState}
 }
 
-func (ue *UserEngine) GetState() *UserState {
+func (ue *UserEngine) GetState() *permissions.UserState {
 	return ue.state
 }
 
 // Create a user by adding the username to the list of usernames
-func GenerateConfirmUser(state *UserState) WebHandle {
+func GenerateConfirmUser(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		confirmationCode := val
 
@@ -90,7 +91,7 @@ func GenerateConfirmUser(state *UserState) WebHandle {
 }
 
 // Log in a user by changing the loggedin value
-func GenerateLoginUser(state *UserState) WebHandle {
+func GenerateLoginUser(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		// Fetch password from ctx
 		password, found := ctx.Params["password"]
@@ -107,14 +108,15 @@ func GenerateLoginUser(state *UserState) WebHandle {
 		if !state.IsConfirmed(username) {
 			return instapage.MessageOKback("Login", "The email for "+username+" has not been confirmed, check your email and follow the link.")
 		}
-		if !CorrectPassword(state, username, password) {
+		if !state.CorrectPassword(username, password) {
 			return instapage.MessageOKback("Login", "Wrong password.")
 		}
 
 		// Log in the user by changing the database and setting a secure cookie
 		state.SetLoggedIn(username)
 
-		state.SetBrowserUsername(ctx, username)
+		// Also store the username in the browser
+		state.SetUsernameCookie(ctx.ResponseWriter, username)
 
 		// TODO: Use a welcoming messageOK where the user can see when he/she last logged in and from which host
 
@@ -142,7 +144,7 @@ func GenerateLoginUser(state *UserState) WebHandle {
 // TODO: Rate limiting, maximum rate per minute or day
 
 // Register a new user, site is ie. "archlinux.no"
-func GenerateRegisterUser(state *UserState, site string) WebHandle {
+func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 	return func(ctx *web.Context, val string) string {
 
 		// Password checks
@@ -181,17 +183,9 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 		}
 
 		// Only some letters are allowed in the username
-	NEXT:
-		for _, letter := range username {
-			for _, allowedLetter := range USERNAME_ALLOWED_LETTERS {
-				if letter == allowedLetter {
-					continue NEXT
-				}
-			}
-			return instapage.MessageOKback("Register", "Only a-å, A-Å, 0-9 and _ are allowed in usernames.")
-		}
-		if username == password1 {
-			return instapage.MessageOKback("Register", "Username and password must be different, try another password.")
+		err := permissions.Check(username, password1)
+		if err != nil {
+			return instapage.MessageOKback("Register", err.Error())
 		}
 
 		adminuser := false
@@ -213,7 +207,7 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 		// The confirmation code must be a minimum of 8 letters long
 		length := MINIMUM_CONFIRMATION_CODE_LENGTH
 		confirmationCode := RandomHumanFriendlyString(length)
-		for AlreadyHasConfirmationCode(state, confirmationCode) {
+		for state.AlreadyHasConfirmationCode(confirmationCode) {
 			// Increase the length of the confirmationCode random string every time there is a collision
 			length++
 			confirmationCode = RandomHumanFriendlyString(length)
@@ -246,9 +240,9 @@ func GenerateRegisterUser(state *UserState, site string) WebHandle {
 }
 
 // Log out a user by changing the loggedin value
-func GenerateLogoutCurrentUser(state *UserState) SimpleContextHandle {
+func GenerateLogoutCurrentUser(state *permissions.UserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := GetBrowserUsername(ctx)
+		username := state.GetUsername(ctx.Request)
 		if username == "" {
 			return instapage.MessageOKback("Logout", "No user to log out")
 		}
@@ -271,7 +265,7 @@ func GenerateNoJavascriptMessage() SimpleContextHandle {
 	}
 }
 
-func LoginCP(basecp BaseCP, state *UserState, url string) *ContentPage {
+func LoginCP(basecp BaseCP, state *permissions.UserState, url string) *ContentPage {
 	cp := basecp(state)
 	cp.ContentTitle = "Login"
 	cp.ContentHTML = instapage.LoginForm()
@@ -286,7 +280,7 @@ func LoginCP(basecp BaseCP, state *UserState, url string) *ContentPage {
 	return cp
 }
 
-func RegisterCP(basecp BaseCP, state *UserState, url string) *ContentPage {
+func RegisterCP(basecp BaseCP, state *permissions.UserState, url string) *ContentPage {
 	cp := basecp(state)
 	cp.ContentTitle = "Register"
 	cp.ContentHTML = instapage.RegisterForm()
