@@ -1,5 +1,7 @@
 package siteengines
 
+// This "engine" is just started and is not complete
+
 import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
