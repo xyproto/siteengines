@@ -1,7 +1,7 @@
 siteengines
 ===========
 
-Collections of "engines" for the genericsite web framework for Go.
+Collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
 
 Features and limitations
 ------------------------
