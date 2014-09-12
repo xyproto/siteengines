@@ -21,11 +21,6 @@ import (
 // An Engine is a specific piece of a website
 // This part handles the login/logout/registration/confirmation pages
 
-const (
-	MINIMUM_CONFIRMATION_CODE_LENGTH = 20
-	USERNAME_ALLOWED_LETTERS         = "abcdefghijklmnopqrstuvwxyzæøåABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ_0123456789"
-)
-
 type UserEngine struct {
 	state *permissions.UserState
 }
@@ -183,7 +178,7 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 		}
 
 		// Only some letters are allowed in the username
-		err := permissions.Check(username, password1)
+		err := Check(username, password1)
 		if err != nil {
 			return instapage.MessageOKback("Register", err.Error())
 		}
@@ -204,17 +199,9 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 			state.SetAdminStatus(username)
 		}
 
-		// The confirmation code must be a minimum of 8 letters long
-		length := MINIMUM_CONFIRMATION_CODE_LENGTH
-		confirmationCode := RandomHumanFriendlyString(length)
-		for state.AlreadyHasConfirmationCode(confirmationCode) {
-			// Increase the length of the confirmationCode random string every time there is a collision
-			length++
-			confirmationCode = RandomHumanFriendlyString(length)
-			if length > 100 {
-				// This should never happen
-				panic("ERROR: Too many generated confirmation codes are not unique, something is wrong")
-			}
+		confirmationCode, err := state.GenerateUniqueConfirmationCode()
+		if err != nil {
+			panic(err.Error())
 		}
 
 		// If registering the admin user (first user on the system), don't send a confirmation email, just register it
