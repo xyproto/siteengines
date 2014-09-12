@@ -33,7 +33,7 @@ func (ae *AdminEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries
 	// template content generator
 	tpvf := DynamicMenuFactoryGenerator(menuEntries)
 
-	mux.HandleFunc("/admin", adminCP.GetHandle(GenerateAdminStatus(state), tpvf(state)))
+	mux.HandleFunc("/admin", adminCP.WrapHandle(mux, GenerateAdminStatus(state), tpvf(state)))
 	mux.HandleFunc("/css/admin.css", ae.GenerateCSS(adminCP.ColorScheme))
 }
 
