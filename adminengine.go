@@ -1,14 +1,14 @@
 package siteengines
 
 import (
+	"fmt"
+	"net/http"
 	"strings"
 
-	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/permissions"
 	"github.com/xyproto/symbolhash"
-	. "github.com/xyproto/webhandle"
 )
 
 // This part handles the "admin" pages
@@ -21,7 +21,7 @@ func NewAdminEngine(state *permissions.UserState) *AdminEngine {
 	return &AdminEngine{state}
 }
 
-func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
+func (ae *AdminEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries MenuEntries) {
 	ae.serveSystem()
 
 	state := ae.state
@@ -33,14 +33,14 @@ func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	// template content generator
 	tpvf := DynamicMenuFactoryGenerator(menuEntries)
 
-	web.Get("/admin", adminCP.WrapSimpleContextHandle(GenerateAdminStatus(state), tpvf(state)))
-	web.Get("/css/admin.css", ae.GenerateCSS(adminCP.ColorScheme))
+	mux.HandleFunc("/admin", adminCP.GetHandle(GenerateAdminStatus(state), tpvf(state)))
+	mux.HandleFunc("/css/admin.css", ae.GenerateCSS(adminCP.ColorScheme))
 }
 
 // TODO: Log and graph when people visit pages and when people contribute content
 // This one is wrapped by ServeAdminPages
-func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
-	return func(ctx *web.Context) string {
+func GenerateAdminStatus(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) string {
 		if !state.AdminRights(ctx.Request) {
 			return "<div class=\"no\">Not logged in as Administrator</div>"
 		}
@@ -110,8 +110,8 @@ func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
 	}
 }
 
-func GenerateStatusCurrentUser(state *permissions.UserState) SimpleContextHandle {
-	return func(ctx *web.Context) string {
+func GenerateStatusCurrentUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Status", "Not logged in as Administrator")
 		}
@@ -130,8 +130,8 @@ func GenerateStatusCurrentUser(state *permissions.UserState) SimpleContextHandle
 	}
 }
 
-func GenerateStatusUser(state *permissions.UserState) WebHandle {
-	return func(ctx *web.Context, username string) string {
+func GenerateStatusUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request, username string) string {
 		if username == "" {
 			return instapage.MessageOKback("Status", "No username given")
 		}
@@ -151,8 +151,8 @@ func GenerateStatusUser(state *permissions.UserState) WebHandle {
 }
 
 // Remove an unconfirmed user
-func GenerateRemoveUnconfirmedUser(state *permissions.UserState) WebHandle {
-	return func(ctx *web.Context, username string) string {
+func GenerateRemoveUnconfirmedUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
 		}
@@ -187,8 +187,8 @@ func GenerateRemoveUnconfirmedUser(state *permissions.UserState) WebHandle {
 
 // TODO: Undo for removing users
 // Remove a user
-func GenerateRemoveUser(state *permissions.UserState) WebHandle {
-	return func(ctx *web.Context, username string) string {
+func GenerateRemoveUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Remove user", "Not logged in as Administrator")
 		}
@@ -207,8 +207,8 @@ func GenerateRemoveUser(state *permissions.UserState) WebHandle {
 	}
 }
 
-func GenerateAllUsernames(state *permissions.UserState) SimpleContextHandle {
-	return func(ctx *web.Context) string {
+func GenerateAllUsernames(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("List usernames", "Not logged in as Administrator")
 		}
@@ -223,8 +223,8 @@ func GenerateAllUsernames(state *permissions.UserState) SimpleContextHandle {
 	}
 }
 
-func GenerateToggleAdmin(state *permissions.UserState) WebHandle {
-	return func(ctx *web.Context, username string) string {
+func GenerateToggleAdmin(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Admin toggle", "Not logged in as Administrator")
 		}
@@ -251,24 +251,24 @@ func (ae *AdminEngine) serveSystem() {
 	state := ae.state
 
 	// These are available for everyone
-	web.Get("/status/(.*)", GenerateStatusUser(state))
+	mux.HandleFunc("/status/(.*)", GenerateStatusUser(state))
 
 	// These are only available as administrator, all have checks
-	web.Get("/status", GenerateStatusCurrentUser(state))
-	web.Get("/remove/(.*)", GenerateRemoveUser(state))
-	web.Get("/removeunconfirmed/(.*)", GenerateRemoveUnconfirmedUser(state))
-	web.Get("/users/(.*)", GenerateAllUsernames(state))
-	web.Get("/admintoggle/(.*)", GenerateToggleAdmin(state))
+	mux.HandleFunc("/status", GenerateStatusCurrentUser(state))
+	mux.HandleFunc("/remove/(.*)", GenerateRemoveUser(state))
+	mux.HandleFunc("/removeunconfirmed/(.*)", GenerateRemoveUnconfirmedUser(state))
+	mux.HandleFunc("/users/(.*)", GenerateAllUsernames(state))
+	mux.HandleFunc("/admintoggle/(.*)", GenerateToggleAdmin(state))
 }
 
-func (ae *AdminEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.ContentType("css")
+func (ae *AdminEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
 		// TODO: Consider if menus should be hidden this way when visiting a subpage
 		//#menuAdmin {
 		//	display: none;
 		//}
-		return `
+		fmt.Fprint(w, `
 .even {
 	background-color: "a0a0a0;
 }
@@ -317,7 +317,7 @@ table, th, tr, td {
 .careful:hover { color: #e00000; }
 .careful:active { color: #e00000; }
 
-`
+`)
 		//
 	}
 }
