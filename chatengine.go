@@ -1,10 +1,10 @@
 package siteengines
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
@@ -47,7 +47,7 @@ func NewChatEngine(userState *permissions.UserState) *ChatEngine {
 	return &ChatEngine{userState, chatState}
 }
 
-func (ce *ChatEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
+func (ce *ChatEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries MenuEntries) {
 	chatCP := basecp(ce.state)
 	chatCP.ContentTitle = "Chat"
 	chatCP.ExtraCSSurls = append(chatCP.ExtraCSSurls, "/css/chat.css")
@@ -55,12 +55,12 @@ func (ce *ChatEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(ce.state)
 
-	web.Get("/chat", chatCP.WrapSimpleContextHandle(ce.GenerateChatCurrentUser(), tvg))
-	web.Post("/say", ce.GenerateSayCurrentUser())
-	web.Get("/css/chat.css", ce.GenerateCSS(chatCP.ColorScheme))
-	web.Post("/setchatlines", ce.GenerateSetChatLinesCurrentUser())
+	mux.HandleFunc("/chat", chatCP.WrapHandle(mux, ce.GenerateChatCurrentUser(), tvg))
+	mux.HandleFunc("/say", ce.GenerateSayCurrentUser())
+	mux.HandleFunc("/css/chat.css", ce.GenerateCSS(chatCP.ColorScheme))
+	mux.HandleFunc("/setchatlines", ce.GenerateSetChatLinesCurrentUser())
 	// For debugging
-	web.Get("/getchatlines", ce.GenerateGetChatLinesCurrentUser())
+	mux.HandleFunc("/getchatlines", ce.GenerateGetChatLinesCurrentUser())
 }
 
 func (ce *ChatEngine) SetLines(username string, lines int) {
@@ -210,14 +210,16 @@ func (ce *ChatEngine) chatText(lines int) string {
 	return retval + "</div>"
 }
 
-func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+func (ce *ChatEngine) GenerateChatCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := ce.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !ce.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 
 		ce.JoinChat(username)
@@ -283,85 +285,97 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 		retval += "<button onClick='setlines(99999);'>99999</button>"
 		// For viewing all the text so far
 
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (ce *ChatEngine) GenerateSayCurrentUser() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+func (ce *ChatEngine) GenerateSayCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := ce.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !ce.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		if !ce.IsChatting(username) {
-			return "Not currently chatting"
+			Ret(w, "Not currently chatting")
+			return
 		}
-		said, found := ctx.Params["said"]
-		if !found || said == "" {
+		said := GetParam(req, "said")
+		if said == "" {
 			// Return the text instead of giving an error for easy use of /say to refresh the content
 			// Note that as long as Say below isn't called, the user will be marked as inactive eventually
-			return ce.chatText(ce.GetLines(username))
+			Ret(w, ce.chatText(ce.GetLines(username)))
+			return
 		}
 
 		ce.Say(username, CleanUserInput(said))
 
-		return ce.chatText(ce.GetLines(username))
+		Ret(w, ce.chatText(ce.GetLines(username)))
 	}
 }
 
-func (ce *ChatEngine) GenerateGetChatLinesCurrentUser() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+func (ce *ChatEngine) GenerateGetChatLinesCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := ce.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !ce.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		if !ce.IsChatting(username) {
-			return "Not currently chatting"
+			Ret(w, "Not currently chatting")
+			return
 		}
 		num := ce.GetLines(username)
 
-		return strconv.Itoa(num)
+		Ret(w, strconv.Itoa(num))
 	}
 }
 
-func (ce *ChatEngine) GenerateSetChatLinesCurrentUser() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+func (ce *ChatEngine) GenerateSetChatLinesCurrentUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := ce.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !ce.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		if !ce.IsChatting(username) {
-			return "Not currently chatting"
+			Ret(w, "Not currently chatting")
+			return
 		}
-		lines, found := ctx.Params["lines"]
-		if !found || lines == "" {
-			return instapage.MessageOKback("Set chat lines", "Missing value for preferred number of lines")
+		lines := GetParam(req, "lines")
+		if lines == "" {
+			Ret(w, instapage.MessageOKback("Set chat lines", "Missing value for preferred number of lines"))
+			return
 		}
 		num, err := strconv.Atoi(lines)
 		if err != nil {
-			return instapage.MessageOKback("Set chat lines", "Invalid number of lines: "+lines)
+			Ret(w, instapage.MessageOKback("Set chat lines", "Invalid number of lines: "+lines))
+			return
 		}
 
 		// Set the preferred number of lines for this user
 		ce.SetLines(username, num)
 
-		return ce.chatText(num)
+		Ret(w, ce.chatText(num))
 	}
 }
 
-func (ce *ChatEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.ContentType("css")
-		return `
+func (ce *ChatEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
+		Ret(w, `
 .yes {
 	background-color: #90ff90;
 	color: black;
@@ -389,7 +403,7 @@ func (ce *ChatEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
 	background-color: white;
 }
 
-`
+`)
 		//
 	}
 }

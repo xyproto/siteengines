@@ -1,7 +1,8 @@
 package siteengines
 
 import (
-	"github.com/hoisie/web"
+	"net/http"
+
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/permissions"
 	"github.com/xyproto/simpleredis"
@@ -26,25 +27,29 @@ func NewIPEngine(state *permissions.UserState) *IPEngine {
 }
 
 // Set an IP adress and generate a confirmation page for it
-func (ie *IPEngine) GenerateSetIP() WebHandle {
-	return func(ctx *web.Context, val string) string {
-		if val == "" {
-			return "Empty value, IP not set"
+func (ie *IPEngine) GenerateSetIP() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		ip := GetLast(req.URL)
+		if ip == "" {
+			Ret(w, "Empty value, IP not set")
+			return
 		}
-		ie.data.Add(val)
-		return "OK, set IP to " + val
+		ie.data.Add(ip)
+		Ret(w, "OK, set IP to "+ip)
 	}
 }
 
 // Get all the stored IP adresses and generate a page for it
-func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
-	return func(ctx *web.Context, val string) string {
-		username := ie.state.GetUsername(ctx.Request)
+func (ie *IPEngine) GenerateGetAllIPs() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := ie.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !ie.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		s := ""
 		iplist, err := ie.data.GetAll()
@@ -53,32 +58,34 @@ func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
 				s += "IP: " + val + "<br />"
 			}
 		}
-		return instapage.Message("IPs", s)
+		Ret(w, instapage.Message("IPs", s))
 	}
 }
 
 // Get the last stored IP adress and generate a page for it
-func (ie *IPEngine) GenerateGetLastIP() WebHandle {
-	return func(ctx *web.Context, val string) string {
-		username := ie.state.GetUsername(ctx.Request)
+func (ie *IPEngine) GenerateGetLastIP() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := ie.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !ie.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		s := ""
 		ip, err := ie.data.GetLast()
 		if err == nil {
 			s = "IP: " + ip
 		}
-		return s
+		Ret(w, s)
 	}
 }
 
-func (ie *IPEngine) ServePages() {
+func (ie *IPEngine) ServePages(mux *http.ServeMux) {
 	// TODO: REST service instead
-	web.Get("/setip/(.*)", ie.GenerateSetIP())
-	web.Get("/getip/(.*)", ie.GenerateGetLastIP())
-	web.Get("/getallips/(.*)", ie.GenerateGetAllIPs())
+	mux.HandleFunc("/setip/", ie.GenerateSetIP())
+	mux.HandleFunc("/getip/", ie.GenerateGetLastIP())
+	mux.HandleFunc("/getallips/", ie.GenerateGetAllIPs())
 }

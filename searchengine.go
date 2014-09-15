@@ -1,10 +1,10 @@
 package siteengines
 
 import (
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
 	"github.com/xyproto/permissions"
@@ -96,11 +96,11 @@ func searchResults(userSearchText UserInput, pc PageCollection) ([]string, []str
 
 // Generate a search handle. This is done in order to be able to modify the cp
 // Searches a list of ContentPage structs
-func GenerateSearchHandle(pc PageCollection) WebHandle {
-	return func(ctx *web.Context, val string) string {
-		q, found := ctx.Params["q"]
-		searchText := UserInput(q)
-		if found {
+func GenerateSearchHandle(pc PageCollection) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		q := GetParam(req, "q")
+		if q != "" {
+			searchText := UserInput(q)
 			content := "Search: " + string(searchText)
 			nl := TagString("br")
 			content += nl + nl
@@ -136,31 +136,32 @@ func GenerateSearchHandle(pc PageCollection) WebHandle {
 			}
 			p.AddNewTag("br")
 			p.AddLastContent("Search took: " + elapsed.String())
-			return page.GetHTML() //GenerateHTMLwithTemplate(page, Kake())
+			Ret(w, page.GetHTML()) //GenerateHTMLwithTemplate(page, Kake())
+			return
 		}
-		return "Invalid parameters"
+		Ret(w, "Invalid parameters")
 	}
 }
 
-func GenerateSearchCSS(cs *ColorScheme) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.ContentType("css")
-		return `
-#searchresult {
-	color: ` + cs.Nicecolor + `;
-	text-decoration: underline;
-}
-`
-		//
-	}
-}
-
-func ServeSearchPages(basecp BaseCP, state *permissions.UserState, cps PageCollection, cs *ColorScheme, tpg TemplateValueGenerator) {
+func ServeSearchPages(mux *http.ServeMux, basecp BaseCP, state *permissions.UserState, cps PageCollection, cs *ColorScheme, tpg TemplateValueGenerator) {
 	searchCP := basecp(state)
 	searchCP.ContentTitle = "Search results"
 	searchCP.ExtraCSSurls = append(searchCP.ExtraCSSurls, "/css/search.css")
 
 	// Note, no slash between "search" and "(.*)". A typical search is "/search?q=blabla"
-	web.Get("/search(.*)", searchCP.WrapWebHandle(GenerateSearchHandle(cps), tpg))
-	web.Get("/css/search.css", GenerateSearchCSS(cs))
+	mux.HandleFunc("/search/", searchCP.WrapHandle(mux, GenerateSearchHandle(cps), tpg))
+	mux.HandleFunc("/css/search.css", GenerateSearchCSS(cs))
+}
+
+func GenerateSearchCSS(cs *ColorScheme) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
+		Ret(w, `
+#searchresult {
+	color: `+cs.Nicecolor+`;
+	text-decoration: underline;
+}
+`)
+		//
+	}
 }

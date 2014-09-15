@@ -1,11 +1,11 @@
 package siteengines
 
 import (
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/moskus"
 	"github.com/xyproto/permissions"
@@ -60,7 +60,7 @@ func NewTimeTableEngine(state *permissions.UserState) *TimeTableEngine {
 	return &TimeTableEngine{state, timeTableState}
 }
 
-func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
+func (tte *TimeTableEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries MenuEntries) {
 	timeTableCP := basecp(tte.state)
 
 	timeTableCP.ContentTitle = "TimeTable"
@@ -69,9 +69,9 @@ func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(tte.state)
 
-	web.Get("/timetable", tte.GenerateTimeTableRedirect())                                  // Redirect to /timeTable/main
-	web.Get("/timetable/(.*)", timeTableCP.WrapWebHandle(tte.GenerateShowTimeTable(), tvg)) // Displaying timeTable pages
-	web.Get("/css/timetable.css", tte.GenerateCSS(timeTableCP.ColorScheme))                 // CSS that is specific for timeTable pages
+	mux.HandleFunc("/timetable", tte.GenerateTimeTableRedirect())                                // Redirect to /timeTable/main
+	mux.HandleFunc("/timetable/", timeTableCP.WrapHandle(mux, tte.GenerateShowTimeTable(), tvg)) // Displaying timeTable pages
+	mux.HandleFunc("/css/timetable.css", tte.GenerateCSS(timeTableCP.ColorScheme))               // CSS that is specific for timeTable pages
 }
 
 func AllPlansDummyContent() *personplan.Plans {
@@ -169,24 +169,29 @@ func Num2dd(num int) string {
 	return s
 }
 
-func (we *TimeTableEngine) GenerateShowTimeTable() WebHandle {
-	return func(ctx *web.Context, userdate string) string {
+func (we *TimeTableEngine) GenerateShowTimeTable() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		userdate := GetLast(req.URL)
 		date := CleanUserInput(userdate)
 		ymd := strings.Split(date, "-")
 		if len(ymd) != 3 {
-			return "Invalid yyyy-mm-dd: " + date
+			Ret(w, "Invalid yyyy-mm-dd: "+date)
+			return
 		}
 		year, err := strconv.Atoi(ymd[0])
 		if (err != nil) || (len(ymd[0]) != 4) {
-			return "Invalid year: " + ymd[0]
+			Ret(w, "Invalid year: "+ymd[0])
+			return
 		}
 		month, err := strconv.Atoi(ymd[1])
 		if (err != nil) || (len(ymd[1]) > 2) {
-			return "Invalid month: " + ymd[1]
+			Ret(w, "Invalid month: "+ymd[1])
+			return
 		}
 		day, err := strconv.Atoi(ymd[2])
 		if (err != nil) || (len(ymd[2]) > 2) {
-			return "Invalid day: " + ymd[2]
+			Ret(w, "Invalid day: "+ymd[2])
+			return
 		}
 		retval := ""
 		retval += "<h1>En uke fra " + strconv.Itoa(year) + "-" + Num2dd(month) + "-" + Num2dd(day) + "</h1>"
@@ -195,23 +200,25 @@ func (we *TimeTableEngine) GenerateShowTimeTable() WebHandle {
 
 		retval += RenderWeekFrom(weekstart, "nb_NO")
 		retval += BackButton()
-		return retval
+
+		Ret(w, retval)
+		return
 	}
 }
 
-func (we *TimeTableEngine) GenerateTimeTableRedirect() SimpleContextHandle {
-	return func(ctx *web.Context) string {
+func (we *TimeTableEngine) GenerateTimeTableRedirect() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
 		t := time.Now()
 		// Redirect to the current date on the form yyyy-mm-dd
-		ctx.SetHeader("Refresh", "0; url=/timetable/"+t.String()[:10], true)
-		return ""
+		w.Header().Set("Refresh", "0; url=/timetable/"+t.String()[:10])
+		return
 	}
 }
 
-func (tte *TimeTableEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.ContentType("css")
-		return `
+func (tte *TimeTableEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
+		Ret(w, `
 .even {
 	background-color: "a0a0a0;
 }
@@ -261,7 +268,7 @@ table, th, tr, td {
 .careful:hover { color: #e00000; }
 .careful:active { color: #e00000; }
 
-`
+`)
 		//
 	}
 }

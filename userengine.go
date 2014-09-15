@@ -6,11 +6,9 @@ package siteengines
 // TODO: The password should be set at confirmation time instead of registration-time in order to make the process clearer and pave the way for invite-only?
 
 import (
-	"math/rand"
+	"net/http"
 	"strings"
-	"time"
 
-	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
@@ -18,36 +16,17 @@ import (
 	. "github.com/xyproto/webhandle"
 )
 
-// An Engine is a specific piece of a website
-// This part handles the login/logout/registration/confirmation pages
-
-type UserEngine struct {
-	state *permissions.UserState
-}
-
-func NewUserEngine(userState *permissions.UserState) *UserEngine {
-	// For the secure cookies
-	// This must happen before the random seeding, or
-	// else people will have to log in again after every server restart
-	web.Config.CookieSecret = RandomCookieFriendlyString(30)
-
-	rand.Seed(time.Now().UnixNano())
-
-	return &UserEngine{userState}
-}
-
-func (ue *UserEngine) GetState() *permissions.UserState {
-	return ue.state
-}
-
 // Create a user by adding the username to the list of usernames
-func GenerateConfirmUser(state *permissions.UserState) WebHandle {
-	return func(ctx *web.Context, val string) string {
+func GenerateConfirmUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		val := GetLast(req.URL)
+
 		confirmationCode := val
 
 		unconfirmedUsernames, err := state.GetAllUnconfirmedUsernames()
 		if err != nil {
-			return instapage.MessageOKurl("Confirmation", "All users are confirmed already.", "/register")
+			Ret(w, instapage.MessageOKurl("Confirmation", "All users are confirmed already.", "/register"))
+			return
 		}
 
 		// Find the username by looking up the confirmationCode on unconfirmed users
@@ -68,11 +47,13 @@ func GenerateConfirmUser(state *permissions.UserState) WebHandle {
 		// Check that the user is there
 		if username == "" {
 			// Say "no longer" because we don't care about people that just try random confirmation links
-			return instapage.MessageOKurl("Confirmation", "The confirmation link is no longer valid.", "/register")
+			Ret(w, instapage.MessageOKurl("Confirmation", "The confirmation link is no longer valid.", "/register"))
+			return
 		}
 		hasUser := state.HasUser(username)
 		if !hasUser {
-			return instapage.MessageOKurl("Confirmation", "The user you wish to confirm does not exist anymore.", "/register")
+			Ret(w, instapage.MessageOKurl("Confirmation", "The user you wish to confirm does not exist anymore.", "/register"))
+			return
 		}
 
 		// Remove from the list of unconfirmed usernames
@@ -81,48 +62,54 @@ func GenerateConfirmUser(state *permissions.UserState) WebHandle {
 		// Mark user as confirmed
 		state.MarkConfirmed(username)
 
-		return instapage.MessageOKurl("Confirmation", "Thank you "+username+", you can now log in.", "/login")
+		Ret(w, instapage.MessageOKurl("Confirmation", "Thank you "+username+", you can now log in.", "/login"))
 	}
 }
 
 // Log in a user by changing the loggedin value
-func GenerateLoginUser(state *permissions.UserState) WebHandle {
-	return func(ctx *web.Context, val string) string {
-		// Fetch password from ctx
-		password, found := ctx.Params["password"]
-		if !found {
-			return instapage.MessageOKback("Login", "Can't log in without a password.")
+func GenerateLoginUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		// Get passwrod from url (should be from POST fields instead?)
+		password := GetFormParam(req, "password")
+
+		if password == "" {
+			Ret(w, instapage.MessageOKback("Login", "Can't log in without a password."))
+			return
 		}
-		username := val
+		username := GetLast(req.URL)
 		if username == "" {
-			return instapage.MessageOKback("Login", "Can't log in with a blank username.")
+			Ret(w, instapage.MessageOKback("Login", "Can't log in with a blank username."))
+			return
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Login", "User "+username+" does not exist, could not log in.")
+			Ret(w, instapage.MessageOKback("Login", "User "+username+" does not exist, could not log in."))
+			return
 		}
 		if !state.IsConfirmed(username) {
-			return instapage.MessageOKback("Login", "The email for "+username+" has not been confirmed, check your email and follow the link.")
+			Ret(w, instapage.MessageOKback("Login", "The email for "+username+" has not been confirmed, check your email and follow the link."))
+			return
 		}
 		if !state.CorrectPassword(username, password) {
-			return instapage.MessageOKback("Login", "Wrong password.")
+			Ret(w, instapage.MessageOKback("Login", "Wrong password."))
+			return
 		}
 
 		// Log in the user by changing the database and setting a secure cookie
 		state.SetLoggedIn(username)
 
 		// Also store the username in the browser
-		state.SetUsernameCookie(ctx.ResponseWriter, username)
+		state.SetUsernameCookie(w, username)
 
 		// TODO: Use a welcoming messageOK where the user can see when he/she last logged in and from which host
 
 		if username == "admin" {
-			ctx.SetHeader("Refresh", "0; url=/admin", true)
+			w.Header().Set("Refresh", "0; url=/admin")
 		} else {
 			// TODO: Redirect to the page the user was at before logging in
-			ctx.SetHeader("Refresh", "0; url=/", true)
+			w.Header().Set("Refresh", "0; url=/")
 		}
 
-		return ""
+		return
 	}
 }
 
@@ -139,48 +126,57 @@ func GenerateLoginUser(state *permissions.UserState) WebHandle {
 // TODO: Rate limiting, maximum rate per minute or day
 
 // Register a new user, site is ie. "archlinux.no"
-func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
-	return func(ctx *web.Context, val string) string {
+func GenerateRegisterUser(state *permissions.UserState, site string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
 
 		// Password checks
-		password1, found := ctx.Params["password1"]
-		if password1 == "" || !found {
-			return instapage.MessageOKback("Register", "Can't register without a password.")
+		password1 := GetFormParam(req, "password1")
+		if password1 == "" {
+			Ret(w, instapage.MessageOKback("Register", "Can't register without a password."))
+			return
 		}
-		password2, found := ctx.Params["password2"]
-		if password2 == "" || !found {
-			return instapage.MessageOKback("Register", "Please confirm the password by typing it in twice.")
+		password2 := GetFormParam(req, "password2")
+		if password2 == "" {
+			Ret(w, instapage.MessageOKback("Register", "Please confirm the password by typing it in twice."))
+			return
 		}
 		if password1 != password2 {
-			return instapage.MessageOKback("Register", "The password and confirmation password must be equal.")
+			Ret(w, instapage.MessageOKback("Register", "The password and confirmation password must be equal."))
+			return
 		}
 
 		// Email checks
-		email, found := ctx.Params["email"]
-		if !found {
-			return instapage.MessageOKback("Register", "Can't register without an email address.")
+		email := GetFormParam(req, "email")
+		if email == "" {
+			Ret(w, instapage.MessageOKback("Register", "Can't register without an email address."))
+			return
 		}
 		// must have @ and ., but no " "
 		if !strings.Contains(email, "@") || !strings.Contains(email, ".") || strings.Contains(email, " ") {
-			return instapage.MessageOKback("Register", "Please use a valid email address.")
+			Ret(w, instapage.MessageOKback("Register", "Please use a valid email address."))
+			return
 		}
 		if email != CleanUserInput(email) {
-			return instapage.MessageOKback("Register", "The sanitized email differs from the given email.")
+			Ret(w, instapage.MessageOKback("Register", "The sanitized email differs from the given email."))
+			return
 		}
 
 		// Username checks
-		username := val
+		username := GetLast(req.URL)
 		if username == "" {
-			return instapage.MessageOKback("Register", "Can't register without a username.")
+			Ret(w, instapage.MessageOKback("Register", "Can't register without a username."))
+			return
 		}
 		if state.HasUser(username) {
-			return instapage.MessageOKback("Register", "That user already exists, try another username.")
+			Ret(w, instapage.MessageOKback("Register", "That user already exists, try another username."))
+			return
 		}
 
 		// Only some letters are allowed in the username
 		err := Check(username, password1)
 		if err != nil {
-			return instapage.MessageOKback("Register", err.Error())
+			Ret(w, instapage.MessageOKback("Register", err.Error()))
+			return
 		}
 
 		adminuser := false
@@ -211,7 +207,8 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 			state.MarkConfirmed(username)
 
 			// Redirect
-			return instapage.MessageOKurl("Registration complete", "Thanks for registering, the admin user has been created.", "/login")
+			Ret(w, instapage.MessageOKurl("Registration complete", "Thanks for registering, the admin user has been created.", "/login"))
+			return
 
 		}
 
@@ -222,19 +219,21 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 		state.AddUnconfirmed(username, confirmationCode)
 
 		// Redirect
-		return instapage.MessageOKurl("Registration complete", "Thanks for registering, the confirmation e-mail has been sent.", "/login")
+		Ret(w, instapage.MessageOKurl("Registration complete", "Thanks for registering, the confirmation e-mail has been sent.", "/login"))
 	}
 }
 
 // Log out a user by changing the loggedin value
-func GenerateLogoutCurrentUser(state *permissions.UserState) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := state.GetUsername(ctx.Request)
+func GenerateLogoutCurrentUser(state *permissions.UserState) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := state.GetUsername(req)
 		if username == "" {
-			return instapage.MessageOKback("Logout", "No user to log out")
+			Ret(w, instapage.MessageOKback("Logout", "No user to log out"))
+			return
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Logout", "user "+username+" does not exist, could not log out")
+			Ret(w, instapage.MessageOKback("Logout", "user "+username+" does not exist, could not log out"))
+			return
 		}
 
 		// Log out the user by changing the database, the cookie can stay
@@ -242,13 +241,14 @@ func GenerateLogoutCurrentUser(state *permissions.UserState) SimpleContextHandle
 
 		// Redirect
 		//ctx.SetHeader("Refresh", "0; url=/login", true)
-		return instapage.MessageOKurl("Logout", username+" is now logged out. Hope to see you soon!", "/login")
+		Ret(w, instapage.MessageOKurl("Logout", username+" is now logged out. Hope to see you soon!", "/login"))
 	}
 }
 
-func GenerateNoJavascriptMessage() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		return instapage.MessageOKback("JavaScript error", "Cookies and Javascript must be enabled.<br />Older browsers might be supported in the future.")
+func GenerateNoJavascriptMessage() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		Ret(w, instapage.MessageOKback("JavaScript error", "Cookies and Javascript must be enabled.<br />Older browsers might be supported in the future."))
+		return
 	}
 }
 
@@ -283,12 +283,11 @@ func RegisterCP(basecp BaseCP, state *permissions.UserState, url string) *Conten
 }
 
 // Site is ie. "archlinux.no" and used for sending confirmation emails
-func (ue *UserEngine) ServePages(site string) {
-	state := ue.state
-	web.Post("/register/(.*)", GenerateRegisterUser(state, site))
-	web.Post("/register", GenerateNoJavascriptMessage())
-	web.Post("/login/(.*)", GenerateLoginUser(state))
-	web.Post("/login", GenerateNoJavascriptMessage())
-	web.Get("/logout", GenerateLogoutCurrentUser(state))
-	web.Get("/confirm/(.*)", GenerateConfirmUser(state))
+func ServePages(mux *http.ServeMux, state *permissions.UserState, site string) {
+	mux.HandleFunc("/register/", GenerateRegisterUser(state, site))
+	mux.HandleFunc("/register", GenerateNoJavascriptMessage())
+	mux.HandleFunc("/login/", GenerateLoginUser(state))
+	mux.HandleFunc("/login", GenerateNoJavascriptMessage())
+	mux.HandleFunc("/logout", GenerateLogoutCurrentUser(state))
+	mux.HandleFunc("/confirm/", GenerateConfirmUser(state))
 }

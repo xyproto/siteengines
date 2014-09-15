@@ -3,7 +3,8 @@ package siteengines
 // This "engine" is just started and is not complete
 
 import (
-	"github.com/hoisie/web"
+	"net/http"
+
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/permissions"
 	"github.com/xyproto/simpleredis"
@@ -21,7 +22,7 @@ func NewUnderskogEngine(state *permissions.UserState) *UnderskogEngine {
 	return &UnderskogEngine{state.GetPool(), state}
 }
 
-func (ue *UnderskogEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
+func (ue *UnderskogEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries MenuEntries) {
 	underskogCP := basecp(ue.state)
 
 	underskogCP.ContentTitle = "Mosebark"
@@ -30,23 +31,24 @@ func (ue *UnderskogEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(ue.state)
 
-	web.Get("/mosebark", underskogCP.WrapWebHandle(ue.GenerateMessages(), tvg))
-	web.Get("/css/mosebark.css", ue.GenerateCSS(underskogCP.ColorScheme))
+	mux.HandleFunc("/mosebark", underskogCP.WrapHandle(mux, ue.GenerateMessages(), tvg))
+	mux.HandleFunc("/css/mosebark.css", ue.GenerateCSS(underskogCP.ColorScheme))
 }
 
-func (ue *UnderskogEngine) GenerateMessages() WebHandle {
-	return func(ctx *web.Context, userdate string) string {
+func (ue *UnderskogEngine) GenerateMessages() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		//userdate := GetLast(req.URL)
 		retval := ""
 		retval += "<h1>MESSAGES</h1>"
 		retval += BackButton()
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (ue *UnderskogEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.ContentType("css")
-		return `
+func (ue *UnderskogEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
+		Ret(w, `
 .even {
 	background-color: "a0a0a0;
 }
@@ -96,7 +98,7 @@ table, th, tr, td {
 .careful:hover { color: #e00000; }
 .careful:active { color: #e00000; }
 
-`
+`)
 		//
 	}
 }

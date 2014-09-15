@@ -1,10 +1,10 @@
 package siteengines
 
 import (
+	"net/http"
 	"regexp"
 	"strings"
 
-	"github.com/hoisie/web"
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
@@ -48,7 +48,7 @@ func NewWikiEngine(state *permissions.UserState) *WikiEngine {
 	return &WikiEngine{state, wikiState}
 }
 
-func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
+func (we *WikiEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries MenuEntries) {
 	wikiCP := basecp(we.state)
 	wikiCP.ContentTitle = "Wiki"
 	wikiCP.ExtraCSSurls = append(wikiCP.ExtraCSSurls, "/css/wiki.css")
@@ -56,15 +56,15 @@ func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(we.state)
 
-	web.Get("/wiki", we.GenerateWikiRedirect())                                         // Redirect to /wiki/main
-	web.Get("/wikiedit/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
-	web.Get("/wikisource/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiViewSource(), tvg)) // Page for viewing the source
-	web.Get("/wikidelete/(.*)", wikiCP.WrapWebHandle(we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
-	web.Get("/wiki/(.*)", wikiCP.WrapWebHandle(we.GenerateShowWiki(), tvg))             // Displaying wiki pages
-	web.Get("/wikipages", wikiCP.WrapSimpleContextHandle(we.GenerateListPages(), tvg))  // Listing wiki pages
-	web.Post("/wiki", we.GenerateCreateOrUpdateWiki())                                  // Create or update pages
-	web.Post("/wikideletenow", we.GenerateDeleteWikiNow())                              // Delete pages (admin only)
-	web.Get("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                        // CSS that is specific for wiki pages
+	mux.HandleFunc("/wiki", we.GenerateWikiRedirect())                                           // Redirect to /wiki/main
+	mux.HandleFunc("/wikiedit/(.*)", wikiCP.WrapHandle(mux, we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
+	mux.HandleFunc("/wikisource/(.*)", wikiCP.WrapHandle(mux, we.GenerateWikiViewSource(), tvg)) // Page for viewing the source
+	mux.HandleFunc("/wikidelete/(.*)", wikiCP.WrapHandle(mux, we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
+	mux.HandleFunc("/wiki/(.*)", wikiCP.WrapHandle(mux, we.GenerateShowWiki(), tvg))             // Displaying wiki pages
+	mux.HandleFunc("/wikipages", wikiCP.WrapHandle(mux, we.GenerateListPages(), tvg))            // Listing wiki pages
+	mux.HandleFunc("/wiki", we.GenerateCreateOrUpdateWiki())                                     // Create or update pages
+	mux.HandleFunc("/wikideletenow", we.GenerateDeleteWikiNow())                                 // Delete pages (admin only)
+	mux.HandleFunc("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                          // CSS that is specific for wiki pages
 }
 
 func (we *WikiEngine) ListPages() string {
@@ -149,82 +149,91 @@ func (we *WikiEngine) HasPage(pageid string) bool {
 	return has
 }
 
-func (we *WikiEngine) GenerateListPages() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := we.state.GetUsername(ctx.Request)
+func (we *WikiEngine) GenerateListPages() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := we.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !we.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		retval := ""
 		retval += "<h2>All wiki pages</h2>"
 		retval += we.ListPages()
 		retval += "<br />"
 		retval += BackButton()
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := we.state.GetUsername(ctx.Request)
+func (we *WikiEngine) GenerateCreateOrUpdateWiki() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := we.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
 		}
 		if !we.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
 		}
-		pageid := CleanUserInput(ctx.Params["id"])
-		title := CleanUserInput(ctx.Params["title"])
-		text := CleanUserInput(ctx.Params["text"])
+		pageid := CleanUserInput(GetParam(req, "id"))
+		title := CleanUserInput(GetParam(req, "title"))
+		text := CleanUserInput(GetParam(req, "text"))
 
 		if !we.HasPage(pageid) {
 			we.CreatePage(pageid)
 		}
 		we.ChangePage(pageid, title, text)
 
-		return "/wiki/" + pageid
+		Ret(w, "/wiki/"+pageid)
 	}
 }
 
-func (we *WikiEngine) GenerateDeleteWikiNow() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		username := we.state.GetUsername(ctx.Request)
+func (we *WikiEngine) GenerateDeleteWikiNow() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		username := we.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !we.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		if !we.state.IsAdmin(username) {
-			return "Not admin"
+			Ret(w, "Not admin")
+			return
 		}
-		pageid := CleanUserInput(ctx.Params["id"])
+		pageid := CleanUserInput(GetParam(req, "id"))
 
 		if pageid == "" {
-			return "Could not delete empty pageid"
+			Ret(w, "Could not delete empty pageid")
+			return
 		}
 
 		if !we.HasPage(pageid) {
-			return "Could not delete this wiki page: " + pageid
+			Ret(w, "Could not delete this wiki page: "+pageid)
+			return
 		}
 		we.DeletePage(pageid)
 
-		return "OK, page deleted: " + pageid
-
+		Ret(w, "OK, page deleted: "+pageid)
 	}
 }
 
-func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
-	return func(ctx *web.Context, pageid string) string {
-		username := we.state.GetUsername(ctx.Request)
+func (we *WikiEngine) GenerateWikiEditForm() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		pageid := GetLast(req.URL)
+		username := we.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !we.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 
 		pageid = CleanUserInput(pageid)
@@ -241,18 +250,21 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 		retval += BackButton()
 		// Focus on the text
 		retval += JS(Focus("#pageText") + "$('#pageText').select();")
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
-	return func(ctx *web.Context, pageid string) string {
-		username := we.state.GetUsername(ctx.Request)
+func (we *WikiEngine) GenerateWikiViewSource() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		pageid := GetLast(req.URL)
+		username := we.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !we.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 
 		pageid = CleanUserInput(pageid)
@@ -265,21 +277,25 @@ func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 		retval += "Page title: <input style='background-color: #e0e0e0;' readonly='readonly' size='40' type='text' id='pageTitle' value='" + title + "'><br /><br />"
 		retval += "<textarea style='background-color: #e0e0e0;' readonly='readonly' rows='25' cols='120' id='pageText'>" + text + "</textarea><br /><br />"
 		retval += BackButton()
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
-	return func(ctx *web.Context, pageid string) string {
-		username := we.state.GetUsername(ctx.Request)
+func (we *WikiEngine) GenerateWikiDeleteForm() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		pageid := GetLast(req.URL)
+		username := we.state.GetUsername(req)
 		if username == "" {
-			return "No user logged in"
+			Ret(w, "No user logged in")
+			return
 		}
 		if !we.state.IsLoggedIn(username) {
-			return "Not logged in"
+			Ret(w, "Not logged in")
+			return
 		}
 		if !we.state.IsAdmin(username) {
-			return "Must be admin"
+			Ret(w, "Must be admin")
+			return
 		}
 
 		pageid = CleanUserInput(pageid)
@@ -290,12 +306,13 @@ func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
 		retval += "<button onClick='deletePage();'>Yes</button><br />"
 		retval += "<label id='status'></label><br />"
 		retval += BackButton()
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (we *WikiEngine) GenerateShowWiki() WebHandle {
-	return func(ctx *web.Context, pageid string) string {
+func (we *WikiEngine) GenerateShowWiki() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		pageid := GetLast(req.URL)
 		retval := ""
 		// Always show the wiki page
 		// TODO: Add a feature for marking wiki pages as unofficial and/or locked?
@@ -306,7 +323,7 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 			retval += "<h1>No such page: " + pageid + "</h1>"
 		}
 		// Display edit or create buttons if the user is logged in
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.GetUsername(req)
 		if (username != "") && we.state.IsLoggedIn(username) {
 			if we.HasPage(pageid) {
 				// Page actions for regular users for pages that exists and are not the main page
@@ -332,21 +349,20 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 			}
 		}
 		retval += BackButton()
-		return retval
+		Ret(w, retval)
 	}
 }
 
-func (we *WikiEngine) GenerateWikiRedirect() SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.SetHeader("Refresh", "0; url=/wiki/main", true)
-		return ""
+func (we *WikiEngine) GenerateWikiRedirect() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Refresh", "0; url=/wiki/main")
 	}
 }
 
-func (we *WikiEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
-	return func(ctx *web.Context) string {
-		ctx.ContentType("css")
-		return `
+func (we *WikiEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
+		Ret(w, `
 .yes {
 	background-color: #90ff90;
 	color: black;
@@ -374,7 +390,7 @@ func (we *WikiEngine) GenerateCSS(cs *ColorScheme) SimpleContextHandle {
 	background-color: white;
 }
 
-`
+`)
 		//
 	}
 }
