@@ -1,7 +1,6 @@
 package siteengines
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/xyproto/instapage"
 	"github.com/xyproto/permissions"
 	"github.com/xyproto/symbolhash"
+	. "github.com/xyproto/webhandle"
 )
 
 // This part handles the "admin" pages
@@ -22,7 +22,7 @@ func NewAdminEngine(state *permissions.UserState) *AdminEngine {
 }
 
 func (ae *AdminEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries MenuEntries) {
-	ae.serveSystem()
+	ae.serveSystem(mux)
 
 	state := ae.state
 
@@ -40,9 +40,10 @@ func (ae *AdminEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries
 // TODO: Log and graph when people visit pages and when people contribute content
 // This one is wrapped by ServeAdminPages
 func GenerateAdminStatus(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) string {
+	return func(w http.ResponseWriter, req *http.Request) {
 		if !state.AdminRights(req) {
-			return "<div class=\"no\">Not logged in as Administrator</div>"
+			Ret(w, "<div class=\"no\">Not logged in as Administrator</div>")
+			return
 		}
 
 		// TODO: List all sorts of info, edit users, etc
@@ -106,37 +107,46 @@ func GenerateAdminStatus(state *permissions.UserState) http.HandlerFunc {
 			}
 		}
 		s += "</table>"
-		return s
+		Ret(w, s)
 	}
 }
 
 func GenerateStatusCurrentUser(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) string {
+	return func(w http.ResponseWriter, req *http.Request) {
 		if !state.AdminRights(req) {
-			return instapage.MessageOKback("Status", "Not logged in as Administrator")
+			Ret(w, instapage.MessageOKback("Status", "Not logged in as Administrator"))
+			return
 		}
 		username := state.GetUsername(req)
 		if username == "" {
-			return instapage.MessageOKback("Current user status", "No user logged in")
+			Ret(w, instapage.MessageOKback("Current user status", "No user logged in"))
+			return
 		}
 		hasUser := state.HasUser(username)
 		if !hasUser {
-			return instapage.MessageOKback("Current user status", username+" does not exist")
+			Ret(w, instapage.MessageOKback("Current user status", username+" does not exist"))
+			return
 		}
 		if !(state.IsLoggedIn(username)) {
-			return instapage.MessageOKback("Current user status", "User "+username+" is not logged in")
+			Ret(w, instapage.MessageOKback("Current user status", "User "+username+" is not logged in"))
+			return
 		}
-		return instapage.MessageOKback("Current user status", "User "+username+" is logged in")
+		Ret(w, instapage.MessageOKback("Current user status", "User "+username+" is logged in"))
 	}
 }
 
 func GenerateStatusUser(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request, username string) string {
+	return func(w http.ResponseWriter, req *http.Request) {
+		// Fetch the username from the last part of the URL path
+		username := GetLast(req.URL)
+
 		if username == "" {
-			return instapage.MessageOKback("Status", "No username given")
+			Ret(w, instapage.MessageOKback("Status", "No username given"))
+			return
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Status", username+" does not exist")
+			Ret(w, instapage.MessageOKback("Status", username+" does not exist"))
+			return
 		}
 		loggedinStatus := "not logged in"
 		if state.IsLoggedIn(username) {
@@ -146,19 +156,25 @@ func GenerateStatusUser(state *permissions.UserState) http.HandlerFunc {
 		if state.IsConfirmed(username) {
 			confirmStatus = "email has been confirmed"
 		}
-		return instapage.MessageOKback("Status", username+" is "+loggedinStatus+" and "+confirmStatus)
+		Ret(w, instapage.MessageOKback("Status", username+" is "+loggedinStatus+" and "+confirmStatus))
+		return
 	}
 }
 
 // Remove an unconfirmed user
 func GenerateRemoveUnconfirmedUser(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request, username string) string {
+	return func(w http.ResponseWriter, req *http.Request) {
+		// Fetch the username from the last part of the URL path
+		username := GetLast(req.URL)
+
 		if !state.AdminRights(req) {
-			return instapage.MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
+			Ret(w, instapage.MessageOKback("Remove unconfirmed user", "Not logged in as Administrator"))
+			return
 		}
 
 		if username == "" {
-			return instapage.MessageOKback("Remove unconfirmed user", "Can't remove blank user.")
+			Ret(w, instapage.MessageOKback("Remove unconfirmed user", "Can't remove blank user."))
+			return
 		}
 
 		found := false
@@ -173,13 +189,15 @@ func GenerateRemoveUnconfirmedUser(state *permissions.UserState) http.HandlerFun
 		}
 
 		if !found {
-			return instapage.MessageOKback("Remove unconfirmed user", "Can't find "+username+" in the list of unconfirmed users.")
+			Ret(w, instapage.MessageOKback("Remove unconfirmed user", "Can't find "+username+" in the list of unconfirmed users."))
+			return
 		}
 
 		// Mark as confirmed
 		state.RemoveUnconfirmed(username)
 
-		return instapage.MessageOKurl("Remove unconfirmed user", "OK, removed "+username+" from the list of unconfirmed users.", "/admin")
+		Ret(w, instapage.MessageOKurl("Remove unconfirmed user", "OK, removed "+username+" from the list of unconfirmed users.", "/admin"))
+		return
 	}
 }
 
@@ -188,29 +206,36 @@ func GenerateRemoveUnconfirmedUser(state *permissions.UserState) http.HandlerFun
 // TODO: Undo for removing users
 // Remove a user
 func GenerateRemoveUser(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request, username string) string {
+	return func(w http.ResponseWriter, req *http.Request) {
+		// Fetch the username from the last part of the URL path
+		username := GetLast(req.URL)
+
 		if !state.AdminRights(req) {
-			return instapage.MessageOKback("Remove user", "Not logged in as Administrator")
+			Ret(w, instapage.MessageOKback("Remove user", "Not logged in as Administrator"))
+			return
 		}
 
 		if username == "" {
-			return instapage.MessageOKback("Remove user", "Can't remove blank user")
+			Ret(w, instapage.MessageOKback("Remove user", "Can't remove blank user"))
+			return
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Remove user", username+" doesn't exists, could not remove")
+			Ret(w, instapage.MessageOKback("Remove user", username+" doesn't exists, could not remove"))
+			return
 		}
 
 		// Remove the user
 		state.RemoveUser(username)
 
-		return instapage.MessageOKurl("Remove user", "OK, removed "+username, "/admin")
+		Ret(w, instapage.MessageOKurl("Remove user", "OK, removed "+username, "/admin"))
 	}
 }
 
 func GenerateAllUsernames(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) string {
+	return func(w http.ResponseWriter, req *http.Request) {
 		if !state.AdminRights(req) {
-			return instapage.MessageOKback("List usernames", "Not logged in as Administrator")
+			Ret(w, instapage.MessageOKback("List usernames", "Not logged in as Administrator"))
+			return
 		}
 		s := ""
 		usernames, err := state.GetAllUsernames()
@@ -219,46 +244,55 @@ func GenerateAllUsernames(state *permissions.UserState) http.HandlerFunc {
 				s += username + "<br />"
 			}
 		}
-		return instapage.MessageOKback("Usernames", s)
+		Ret(w, instapage.MessageOKback("Usernames", s))
 	}
 }
 
 func GenerateToggleAdmin(state *permissions.UserState) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request, username string) string {
+	return func(w http.ResponseWriter, req *http.Request) {
+
+		// Fetch the username from the last part of the URL path
+		username := GetLast(req.URL)
+
 		if !state.AdminRights(req) {
-			return instapage.MessageOKback("Admin toggle", "Not logged in as Administrator")
+			Ret(w, instapage.MessageOKback("Admin toggle", "Not logged in as Administrator"))
+			return
 		}
 		if username == "" {
-			return instapage.MessageOKback("Admin toggle", "Can't set toggle empty username")
+			Ret(w, instapage.MessageOKback("Admin toggle", "Can't set toggle empty username"))
+			return
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Admin toggle", "Can't toggle non-existing user")
+			Ret(w, instapage.MessageOKback("Admin toggle", "Can't toggle non-existing user"))
+			return
 		}
 		// A special case
 		if username == "admin" {
-			return instapage.MessageOKback("Admin toggle", "Can't remove admin rights from the admin user")
+			Ret(w, instapage.MessageOKback("Admin toggle", "Can't remove admin rights from the admin user"))
+			return
 		}
 		if !state.IsAdmin(username) {
 			state.SetAdminStatus(username)
-			return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now an admin", "/admin")
+			Ret(w, instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now an admin", "/admin"))
+			return
 		}
 		state.RemoveAdminStatus(username)
-		return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now a regular user", "/admin")
+		Ret(w, instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now a regular user", "/admin"))
 	}
 }
 
-func (ae *AdminEngine) serveSystem() {
+func (ae *AdminEngine) serveSystem(mux *http.ServeMux) {
 	state := ae.state
 
 	// These are available for everyone
-	mux.HandleFunc("/status/(.*)", GenerateStatusUser(state))
+	mux.HandleFunc("/status/", GenerateStatusUser(state))
 
 	// These are only available as administrator, all have checks
 	mux.HandleFunc("/status", GenerateStatusCurrentUser(state))
-	mux.HandleFunc("/remove/(.*)", GenerateRemoveUser(state))
-	mux.HandleFunc("/removeunconfirmed/(.*)", GenerateRemoveUnconfirmedUser(state))
-	mux.HandleFunc("/users/(.*)", GenerateAllUsernames(state))
-	mux.HandleFunc("/admintoggle/(.*)", GenerateToggleAdmin(state))
+	mux.HandleFunc("/remove/", GenerateRemoveUser(state))
+	mux.HandleFunc("/removeunconfirmed/", GenerateRemoveUnconfirmedUser(state))
+	mux.HandleFunc("/users/", GenerateAllUsernames(state))
+	mux.HandleFunc("/admintoggle/", GenerateToggleAdmin(state))
 }
 
 func (ae *AdminEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
@@ -268,7 +302,7 @@ func (ae *AdminEngine) GenerateCSS(cs *ColorScheme) http.HandlerFunc {
 		//#menuAdmin {
 		//	display: none;
 		//}
-		fmt.Fprint(w, `
+		Ret(w, `
 .even {
 	background-color: "a0a0a0;
 }
