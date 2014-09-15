@@ -16,8 +16,17 @@ import (
 	. "github.com/xyproto/webhandle"
 )
 
+type UserEngine struct {
+	state *permissions.UserState
+}
+
+func NewUserEngine(state *permissions.UserState) *UserEngine {
+	return &UserEngine{state}
+}
+
 // Create a user by adding the username to the list of usernames
-func GenerateConfirmUser(state *permissions.UserState) http.HandlerFunc {
+func (ue *UserEngine) GenerateConfirmUser() http.HandlerFunc {
+	state := ue.state
 	return func(w http.ResponseWriter, req *http.Request) {
 		val := GetLast(req.URL)
 
@@ -67,7 +76,8 @@ func GenerateConfirmUser(state *permissions.UserState) http.HandlerFunc {
 }
 
 // Log in a user by changing the loggedin value
-func GenerateLoginUser(state *permissions.UserState) http.HandlerFunc {
+func (ue *UserEngine) GenerateLoginUser() http.HandlerFunc {
+	state := ue.state
 	return func(w http.ResponseWriter, req *http.Request) {
 		// Get passwrod from url (should be from POST fields instead?)
 		password := GetFormParam(req, "password")
@@ -126,7 +136,8 @@ func GenerateLoginUser(state *permissions.UserState) http.HandlerFunc {
 // TODO: Rate limiting, maximum rate per minute or day
 
 // Register a new user, site is ie. "archlinux.no"
-func GenerateRegisterUser(state *permissions.UserState, site string) http.HandlerFunc {
+func (ue *UserEngine) GenerateRegisterUser(site string) http.HandlerFunc {
+	state := ue.state
 	return func(w http.ResponseWriter, req *http.Request) {
 
 		// Password checks
@@ -224,7 +235,8 @@ func GenerateRegisterUser(state *permissions.UserState, site string) http.Handle
 }
 
 // Log out a user by changing the loggedin value
-func GenerateLogoutCurrentUser(state *permissions.UserState) http.HandlerFunc {
+func (ue *UserEngine) GenerateLogoutCurrentUser() http.HandlerFunc {
+	state := ue.state
 	return func(w http.ResponseWriter, req *http.Request) {
 		username := state.GetUsername(req)
 		if username == "" {
@@ -283,11 +295,11 @@ func RegisterCP(basecp BaseCP, state *permissions.UserState, url string) *Conten
 }
 
 // Site is ie. "archlinux.no" and used for sending confirmation emails
-func ServePages(mux *http.ServeMux, state *permissions.UserState, site string) {
-	mux.HandleFunc("/register/", GenerateRegisterUser(state, site))
+func (ue *UserEngine) ServePages(mux *http.ServeMux, site string) {
+	mux.HandleFunc("/register/", ue.GenerateRegisterUser(site))
 	mux.HandleFunc("/register", GenerateNoJavascriptMessage())
-	mux.HandleFunc("/login/", GenerateLoginUser(state))
+	mux.HandleFunc("/login/", ue.GenerateLoginUser())
 	mux.HandleFunc("/login", GenerateNoJavascriptMessage())
-	mux.HandleFunc("/logout", GenerateLogoutCurrentUser(state))
-	mux.HandleFunc("/confirm/", GenerateConfirmUser(state))
+	mux.HandleFunc("/logout", ue.GenerateLogoutCurrentUser())
+	mux.HandleFunc("/confirm/", ue.GenerateConfirmUser())
 }
