@@ -155,7 +155,7 @@ func GenerateSearchCSS(cs *ColorScheme) SimpleContextHandle {
 	}
 }
 
-func ServeSearchPages(basecp BaseCP, state *permissions.UserState, cps PageCollection, cs *ColorScheme, tpg OldTemplateValueGenerator) {
+func ServeSearchPages(basecp BaseCP, state *permissions.UserState, cps PageCollection, cs *ColorScheme, tpg TemplateValueGenerator) {
 	searchCP := basecp(state)
 	searchCP.ContentTitle = "Search results"
 	searchCP.ExtraCSSurls = append(searchCP.ExtraCSSurls, "/css/search.css")
