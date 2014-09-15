@@ -297,9 +297,9 @@ func RegisterCP(basecp BaseCP, state *permissions.UserState, url string) *Conten
 // Site is ie. "archlinux.no" and used for sending confirmation emails
 func (ue *UserEngine) ServePages(mux *http.ServeMux, site string) {
 	mux.HandleFunc("/register/", ue.GenerateRegisterUser(site))
-	mux.HandleFunc("/register", GenerateNoJavascriptMessage())
+	//mux.HandleFunc("/register", GenerateNoJavascriptMessage())
 	mux.HandleFunc("/login/", ue.GenerateLoginUser())
-	mux.HandleFunc("/login", GenerateNoJavascriptMessage())
+	//mux.HandleFunc("/login", GenerateNoJavascriptMessage())
 	mux.HandleFunc("/logout", ue.GenerateLogoutCurrentUser())
 	mux.HandleFunc("/confirm/", ue.GenerateConfirmUser())
 }

@@ -56,15 +56,15 @@ func (we *WikiEngine) ServePages(mux *http.ServeMux, basecp BaseCP, menuEntries 
 	tvgf := DynamicMenuFactoryGenerator(menuEntries)
 	tvg := tvgf(we.state)
 
-	mux.HandleFunc("/wiki", we.GenerateWikiRedirect())                                           // Redirect to /wiki/main
-	mux.HandleFunc("/wikiedit/(.*)", wikiCP.WrapHandle(mux, we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
-	mux.HandleFunc("/wikisource/(.*)", wikiCP.WrapHandle(mux, we.GenerateWikiViewSource(), tvg)) // Page for viewing the source
-	mux.HandleFunc("/wikidelete/(.*)", wikiCP.WrapHandle(mux, we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
-	mux.HandleFunc("/wiki/(.*)", wikiCP.WrapHandle(mux, we.GenerateShowWiki(), tvg))             // Displaying wiki pages
-	mux.HandleFunc("/wikipages", wikiCP.WrapHandle(mux, we.GenerateListPages(), tvg))            // Listing wiki pages
-	mux.HandleFunc("/wiki", we.GenerateCreateOrUpdateWiki())                                     // Create or update pages
-	mux.HandleFunc("/wikideletenow", we.GenerateDeleteWikiNow())                                 // Delete pages (admin only)
-	mux.HandleFunc("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                          // CSS that is specific for wiki pages
+	mux.HandleFunc("/wikimain", we.GenerateWikiRedirect())                                   // Redirect to /wiki/main
+	mux.HandleFunc("/wikiedit/", wikiCP.WrapHandle(mux, we.GenerateWikiEditForm(), tvg))     // Form for editing wiki pages
+	mux.HandleFunc("/wikisource/", wikiCP.WrapHandle(mux, we.GenerateWikiViewSource(), tvg)) // Page for viewing the source
+	mux.HandleFunc("/wikidelete/", wikiCP.WrapHandle(mux, we.GenerateWikiDeleteForm(), tvg)) // Form for deleting wiki pages
+	mux.HandleFunc("/wiki/", wikiCP.WrapHandle(mux, we.GenerateShowWiki(), tvg))             // Displaying wiki pages
+	mux.HandleFunc("/wikipages", wikiCP.WrapHandle(mux, we.GenerateListPages(), tvg))        // Listing wiki pages
+	mux.HandleFunc("/wiki", we.GenerateCreateOrUpdateWiki())                                 // Create or update pages
+	mux.HandleFunc("/wikideletenow", we.GenerateDeleteWikiNow())                             // Delete pages (admin only)
+	mux.HandleFunc("/css/wiki.css", we.GenerateCSS(wikiCP.ColorScheme))                      // CSS that is specific for wiki pages
 }
 
 func (we *WikiEngine) ListPages() string {
