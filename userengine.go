@@ -29,7 +29,7 @@ func NewUserEngine(userState *permissions.UserState) *UserEngine {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
-	web.Config.CookieSecret = RandomCookieFriendlyString(30)
+	web.Config.CookieSecret = permissions.RandomCookieFriendlyString(30)
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -178,7 +178,7 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 		}
 
 		// Only some letters are allowed in the username
-		err := Check(username, password1)
+		err := permissions.ValidUsernamePassword(username, password1)
 		if err != nil {
 			return instapage.MessageOKback("Register", err.Error())
 		}
