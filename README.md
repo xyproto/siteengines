@@ -13,12 +13,7 @@ So far, there's:
 * An admin panel for the admin user
 * A user registration system (with email and confirmation codes)
 * A simple search function that also searches dynamic pages, (but does not search the wiki and chat yet)
-* A few other engines that are just started
-
-Things are working, but are not "polished" and there is plenty of further work that could be done.
-
-I wish to transition into using [negroni](https://github.com/codegangsta/negroni) instead of web.go.
-
+* A few other engines that are incomplete
 
 General information
 -------------------
