@@ -1,5 +1,6 @@
 package siteengines
 
+// TODO: Move the function that adds a confirmation code for a user to the permissions package.
 // TODO: Check for the visual likeness of two usernames when checking for availability! Generate images and compare pixels.
 // TODO: Logging in should work case sensitively, or at least without concern for the case of the first letter
 // TODO: Consider using "0" and "1" instead of "true" or "false" when setting values, while still understanding "true" or "false"
