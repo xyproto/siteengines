@@ -28,7 +28,7 @@ type ChatState struct {
 	pool     *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewChatEngine(userState *permissions.UserState) *ChatEngine {
+func NewChatEngine(userState permissions.UserStateKeeper) *ChatEngine {
 	pool := userState.Pool()
 	dbindex := userState.DatabaseIndex()
 

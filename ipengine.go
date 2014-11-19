@@ -13,7 +13,7 @@ type IPEngine struct {
 	data  *simpleredis.List
 }
 
-func NewIPEngine(state *permissions.UserState) *IPEngine {
+func NewIPEngine(state permissions.UserStateKeeper) *IPEngine {
 
 	// Create a RedisList for storing IP adresses
 	ips := simpleredis.NewList(state.Pool(), "IPs")
