@@ -8,7 +8,7 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -17,7 +17,7 @@ import (
 // This part handles the "chat" pages
 
 type ChatEngine struct {
-	state     *permissions.UserState
+	state     permissions.UserStateKeeper
 	chatState *ChatState
 }
 
@@ -29,8 +29,8 @@ type ChatState struct {
 }
 
 func NewChatEngine(userState *permissions.UserState) *ChatEngine {
-	pool := userState.GetPool()
-	dbindex := userState.GetDatabaseIndex()
+	pool := userState.Pool()
+	dbindex := userState.DatabaseIndex()
 
 	chatState := new(ChatState)
 
@@ -141,7 +141,7 @@ func (ce *ChatEngine) IsChatting(username string) bool {
 		}
 	}
 	// TODO: If the user was last seen more than N minutes ago, set as not chatting and return false
-	return ce.state.GetBooleanField(username, "chatting")
+	return ce.state.BooleanField(username, "chatting")
 }
 
 // Set "chatting" to "true" or "false" for a given user
@@ -173,7 +173,8 @@ func LeaveChat(ce *ChatEngine, username string) {
 	ce.SetChatting(username, false)
 }
 
-func (ce *ChatEngine) GetChatUsers() []string {
+// Get current users of the chat
+func (ce *ChatEngine) ChatUsers() []string {
 	chatUsernames, err := ce.chatState.active.GetAll()
 	if err != nil {
 		return []string{}
@@ -181,7 +182,8 @@ func (ce *ChatEngine) GetChatUsers() []string {
 	return chatUsernames
 }
 
-func (ce *ChatEngine) GetChatText() []string {
+// Get current text of the chat
+func (ce *ChatEngine) ChatText() []string {
 	chatText, err := ce.chatState.said.GetAll()
 	if err != nil {
 		return []string{}
@@ -212,7 +214,7 @@ func (ce *ChatEngine) chatText(lines int) string {
 
 func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+		username := ce.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -227,7 +229,7 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 
 		retval := "<h2>Hi " + username + "</h2>"
 		seenusers := ""
-		for _, otherUser := range ce.GetChatUsers() {
+		for _, otherUser := range ce.ChatUsers() {
 			if otherUser == username {
 				continue
 			}
@@ -289,7 +291,7 @@ func (ce *ChatEngine) GenerateChatCurrentUser() SimpleContextHandle {
 
 func (ce *ChatEngine) GenerateSayCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+		username := ce.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -314,7 +316,7 @@ func (ce *ChatEngine) GenerateSayCurrentUser() SimpleContextHandle {
 
 func (ce *ChatEngine) GenerateGetChatLinesCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+		username := ce.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -332,7 +334,7 @@ func (ce *ChatEngine) GenerateGetChatLinesCurrentUser() SimpleContextHandle {
 
 func (ce *ChatEngine) GenerateSetChatLinesCurrentUser() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := ce.state.GetUsername(ctx.Request)
+		username := ce.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}

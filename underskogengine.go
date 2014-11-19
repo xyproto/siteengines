@@ -5,7 +5,7 @@ package siteengines
 import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -14,11 +14,11 @@ type UnderskogEngine struct {
 	//plans *simpleredis.HashMap
 
 	pool  *simpleredis.ConnectionPool // A connection pool for Redis
-	state *permissions.UserState
+	state permissions.UserStateKeeper
 }
 
 func NewUnderskogEngine(state *permissions.UserState) *UnderskogEngine {
-	return &UnderskogEngine{state.GetPool(), state}
+	return &UnderskogEngine{state.Pool(), state}
 }
 
 func (ue *UnderskogEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {

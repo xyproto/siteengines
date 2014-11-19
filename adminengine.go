@@ -6,7 +6,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	"github.com/xyproto/symbolhash"
 	. "github.com/xyproto/webhandle"
 )
@@ -14,10 +14,10 @@ import (
 // This part handles the "admin" pages
 
 type AdminEngine struct {
-	state *permissions.UserState
+	state permissions.UserStateKeeper
 }
 
-func NewAdminEngine(state *permissions.UserState) *AdminEngine {
+func NewAdminEngine(state permissions.UserStateKeeper) *AdminEngine {
 	return &AdminEngine{state}
 }
 
@@ -39,7 +39,7 @@ func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 
 // TODO: Log and graph when people visit pages and when people contribute content
 // This one is wrapped by ServeAdminPages
-func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
+func GenerateAdminStatus(state permissions.UserStateKeeper) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
 			return "<div class=\"no\">Not logged in as Administrator</div>"
@@ -53,7 +53,7 @@ func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
 		s += "<tr>"
 		s += "<th>Username</th><th>Confirmed</th><th>Logged in</th><th>Administrator</th><th>Admin toggle</th><th>Remove user</th><th>Email</th><th>Password hash</th>"
 		s += "</tr>"
-		usernames, err := state.GetAllUsernames()
+		usernames, err := state.AllUsernames()
 		if err == nil {
 			for rownr, username := range usernames {
 				if rownr%2 == 0 {
@@ -68,12 +68,12 @@ func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
 				s += "<td><a class=\"darkgrey\" href=\"/admintoggle/" + username + "\">admin toggle</a></td>"
 				// TODO: Ask for confirmation first with a instapage.MessageOKurl("blabla", "blabla", "/actually/remove/stuff")
 				s += "<td><a class=\"careful\" href=\"/remove/" + username + "\">remove</a></td>"
-				email, err := state.GetEmail(username)
+				email, err := state.Email(username)
 				if err == nil {
 					// The cleanup happens at registration time, but it's ok with an extra cleanup
 					s += "<td>" + CleanUserInput(email) + "</td>"
 				}
-				passwordHash, err := state.GetPasswordHash(username)
+				passwordHash, err := state.PasswordHash(username)
 				if err == nil {
 					if strings.HasPrefix(passwordHash, "abc123") {
 						s += "<td>" + passwordHash + " (<a href=\"/fixpassword/" + username + "\">fix</a>)</td>"
@@ -91,12 +91,12 @@ func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
 		s += "<tr>"
 		s += "<th>Username</th><th>Confirmation link</th><th>Remove</th>"
 		s += "</tr>"
-		usernames, err = state.GetAllUnconfirmedUsernames()
+		usernames, err = state.AllUnconfirmedUsernames()
 		if err == nil {
 			for _, username := range usernames {
 				s += "<tr>"
 				s += "<td><a class=\"username\" href=\"/status/" + username + "\">" + username + "</a></td>"
-				confirmationCode, err := state.GetConfirmationCode(username)
+				confirmationCode, err := state.ConfirmationCode(username)
 				if err != nil {
 					panic("ERROR: Could not get confirmation code")
 				}
@@ -110,12 +110,12 @@ func GenerateAdminStatus(state *permissions.UserState) SimpleContextHandle {
 	}
 }
 
-func GenerateStatusCurrentUser(state *permissions.UserState) SimpleContextHandle {
+func GenerateStatusCurrentUser(state permissions.UserStateKeeper) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Status", "Not logged in as Administrator")
 		}
-		username := state.GetUsername(ctx.Request)
+		username := state.Username(ctx.Request)
 		if username == "" {
 			return instapage.MessageOKback("Current user status", "No user logged in")
 		}
@@ -130,7 +130,7 @@ func GenerateStatusCurrentUser(state *permissions.UserState) SimpleContextHandle
 	}
 }
 
-func GenerateStatusUser(state *permissions.UserState) WebHandle {
+func GenerateStatusUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if username == "" {
 			return instapage.MessageOKback("Status", "No username given")
@@ -151,7 +151,7 @@ func GenerateStatusUser(state *permissions.UserState) WebHandle {
 }
 
 // Remove an unconfirmed user
-func GenerateRemoveUnconfirmedUser(state *permissions.UserState) WebHandle {
+func GenerateRemoveUnconfirmedUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
@@ -162,7 +162,7 @@ func GenerateRemoveUnconfirmedUser(state *permissions.UserState) WebHandle {
 		}
 
 		found := false
-		usernames, err := state.GetAllUnconfirmedUsernames()
+		usernames, err := state.AllUnconfirmedUsernames()
 		if err == nil {
 			for _, unconfirmedUsername := range usernames {
 				if username == unconfirmedUsername {
@@ -187,7 +187,7 @@ func GenerateRemoveUnconfirmedUser(state *permissions.UserState) WebHandle {
 
 // TODO: Undo for removing users
 // Remove a user
-func GenerateRemoveUser(state *permissions.UserState) WebHandle {
+func GenerateRemoveUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Remove user", "Not logged in as Administrator")
@@ -207,13 +207,13 @@ func GenerateRemoveUser(state *permissions.UserState) WebHandle {
 	}
 }
 
-func GenerateAllUsernames(state *permissions.UserState) SimpleContextHandle {
+func GenerateAllUsernames(state permissions.UserStateKeeper) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("List usernames", "Not logged in as Administrator")
 		}
 		s := ""
-		usernames, err := state.GetAllUsernames()
+		usernames, err := state.AllUsernames()
 		if err == nil {
 			for _, username := range usernames {
 				s += username + "<br />"
@@ -223,7 +223,7 @@ func GenerateAllUsernames(state *permissions.UserState) SimpleContextHandle {
 	}
 }
 
-func GenerateToggleAdmin(state *permissions.UserState) WebHandle {
+func GenerateToggleAdmin(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return instapage.MessageOKback("Admin toggle", "Not logged in as Administrator")

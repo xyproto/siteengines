@@ -7,7 +7,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	. "github.com/xyproto/webhandle"
 )
 

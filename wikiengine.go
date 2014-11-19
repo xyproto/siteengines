@@ -8,7 +8,7 @@ import (
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -21,7 +21,7 @@ import (
 // TODO: Add the wiki pages to the search engine somehow (and the other engines too, like the chat)
 
 type WikiEngine struct {
-	state     *permissions.UserState
+	state     permissions.UserStateKeeper
 	wikiState *WikiState
 }
 
@@ -38,11 +38,11 @@ var (
 )
 
 func NewWikiEngine(state *permissions.UserState) *WikiEngine {
-	pool := state.GetPool()
+	pool := state.Pool()
 
 	wikiState := new(WikiState)
 	wikiState.pages = simpleredis.NewHashMap(pool, "pages")
-	wikiState.pages.SelectDatabase(state.GetDatabaseIndex())
+	wikiState.pages.SelectDatabase(state.DatabaseIndex())
 	wikiState.pool = pool
 
 	return &WikiEngine{state, wikiState}
@@ -151,7 +151,7 @@ func (we *WikiEngine) HasPage(pageid string) bool {
 
 func (we *WikiEngine) GenerateListPages() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -169,7 +169,7 @@ func (we *WikiEngine) GenerateListPages() SimpleContextHandle {
 
 func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -191,7 +191,7 @@ func (we *WikiEngine) GenerateCreateOrUpdateWiki() SimpleContextHandle {
 
 func (we *WikiEngine) GenerateDeleteWikiNow() SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -219,7 +219,7 @@ func (we *WikiEngine) GenerateDeleteWikiNow() SimpleContextHandle {
 
 func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -247,7 +247,7 @@ func (we *WikiEngine) GenerateWikiEditForm() WebHandle {
 
 func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -271,7 +271,7 @@ func (we *WikiEngine) GenerateWikiViewSource() WebHandle {
 
 func (we *WikiEngine) GenerateWikiDeleteForm() WebHandle {
 	return func(ctx *web.Context, pageid string) string {
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -306,7 +306,7 @@ func (we *WikiEngine) GenerateShowWiki() WebHandle {
 			retval += "<h1>No such page: " + pageid + "</h1>"
 		}
 		// Display edit or create buttons if the user is logged in
-		username := we.state.GetUsername(ctx.Request)
+		username := we.state.Username(ctx.Request)
 		if (username != "") && we.state.IsLoggedIn(username) {
 			if we.HasPage(pageid) {
 				// Page actions for regular users for pages that exists and are not the main page

@@ -8,7 +8,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/moskus"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	"github.com/xyproto/personplan"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
@@ -38,7 +38,7 @@ import (
  */
 
 type TimeTableEngine struct {
-	state          *permissions.UserState
+	state          permissions.UserStateKeeper
 	timeTableState *TimeTableState
 }
 
@@ -50,11 +50,11 @@ type TimeTableState struct {
 }
 
 func NewTimeTableEngine(state *permissions.UserState) *TimeTableEngine {
-	pool := state.GetPool()
+	pool := state.Pool()
 	timeTableState := new(TimeTableState)
 
 	timeTableState.plans = simpleredis.NewHashMap(pool, "plans")
-	timeTableState.plans.SelectDatabase(state.GetDatabaseIndex())
+	timeTableState.plans.SelectDatabase(state.DatabaseIndex())
 
 	timeTableState.pool = pool
 	return &TimeTableEngine{state, timeTableState}

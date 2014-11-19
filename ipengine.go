@@ -3,20 +3,20 @@ package siteengines
 import (
 	"github.com/hoisie/web"
 	"github.com/xyproto/instapage"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
 type IPEngine struct {
-	state *permissions.UserState
+	state permissions.UserStateKeeper
 	data  *simpleredis.List
 }
 
 func NewIPEngine(state *permissions.UserState) *IPEngine {
 
 	// Create a RedisList for storing IP adresses
-	ips := simpleredis.NewList(state.GetPool(), "IPs")
+	ips := simpleredis.NewList(state.Pool(), "IPs")
 
 	ipEngine := new(IPEngine)
 	ipEngine.data = ips
@@ -39,7 +39,7 @@ func (ie *IPEngine) GenerateSetIP() WebHandle {
 // Get all the stored IP adresses and generate a page for it
 func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
 	return func(ctx *web.Context, val string) string {
-		username := ie.state.GetUsername(ctx.Request)
+		username := ie.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}
@@ -60,7 +60,7 @@ func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
 // Get the last stored IP adress and generate a page for it
 func (ie *IPEngine) GenerateGetLastIP() WebHandle {
 	return func(ctx *web.Context, val string) string {
-		username := ie.state.GetUsername(ctx.Request)
+		username := ie.state.Username(ctx.Request)
 		if username == "" {
 			return "No user logged in"
 		}

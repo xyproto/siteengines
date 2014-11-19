@@ -15,7 +15,7 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions"
+	"github.com/xyproto/permissions2"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -46,7 +46,7 @@ func GenerateConfirmUser(state *permissions.UserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		confirmationCode := val
 
-		unconfirmedUsernames, err := state.GetAllUnconfirmedUsernames()
+		unconfirmedUsernames, err := state.AllUnconfirmedUsernames()
 		if err != nil {
 			return instapage.MessageOKurl("Confirmation", "All users are confirmed already.", "/register")
 		}
@@ -54,7 +54,7 @@ func GenerateConfirmUser(state *permissions.UserState) WebHandle {
 		// Find the username by looking up the confirmationCode on unconfirmed users
 		username := ""
 		for _, aUsername := range unconfirmedUsernames {
-			aConfirmationCode, err := state.GetConfirmationCode(aUsername)
+			aConfirmationCode, err := state.ConfirmationCode(aUsername)
 			if err != nil {
 				// If the confirmation code can not be found, just skip this one
 				continue
@@ -230,7 +230,7 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 // Log out a user by changing the loggedin value
 func GenerateLogoutCurrentUser(state *permissions.UserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
-		username := state.GetUsername(ctx.Request)
+		username := state.Username(ctx.Request)
 		if username == "" {
 			return instapage.MessageOKback("Logout", "No user to log out")
 		}
