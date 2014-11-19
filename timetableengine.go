@@ -49,7 +49,7 @@ type TimeTableState struct {
 	pool *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewTimeTableEngine(state *permissions.UserState) *TimeTableEngine {
+func NewTimeTableEngine(state permissions.UserStateKeeper) *TimeTableEngine {
 	pool := state.Pool()
 	timeTableState := new(TimeTableState)
 

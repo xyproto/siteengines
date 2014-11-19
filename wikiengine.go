@@ -37,7 +37,7 @@ var (
 	}
 )
 
-func NewWikiEngine(state *permissions.UserState) *WikiEngine {
+func NewWikiEngine(state permissions.UserStateKeeper) *WikiEngine {
 	pool := state.Pool()
 
 	wikiState := new(WikiState)

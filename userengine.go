@@ -23,10 +23,10 @@ import (
 // This part handles the login/logout/registration/confirmation pages
 
 type UserEngine struct {
-	state *permissions.UserState
+	state permissions.UserStateKeeper
 }
 
-func NewUserEngine(userState *permissions.UserState) *UserEngine {
+func NewUserEngine(userState permissions.UserStateKeeper) *UserEngine {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
@@ -37,12 +37,12 @@ func NewUserEngine(userState *permissions.UserState) *UserEngine {
 	return &UserEngine{userState}
 }
 
-func (ue *UserEngine) GetState() *permissions.UserState {
+func (ue *UserEngine) GetState() permissions.UserStateKeeper {
 	return ue.state
 }
 
 // Create a user by adding the username to the list of usernames
-func GenerateConfirmUser(state *permissions.UserState) WebHandle {
+func GenerateConfirmUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		confirmationCode := val
 
@@ -87,7 +87,7 @@ func GenerateConfirmUser(state *permissions.UserState) WebHandle {
 }
 
 // Log in a user by changing the loggedin value
-func GenerateLoginUser(state *permissions.UserState) WebHandle {
+func GenerateLoginUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		// Fetch password from ctx
 		password, found := ctx.Params["password"]
@@ -140,7 +140,7 @@ func GenerateLoginUser(state *permissions.UserState) WebHandle {
 // TODO: Rate limiting, maximum rate per minute or day
 
 // Register a new user, site is ie. "archlinux.no"
-func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
+func GenerateRegisterUser(state permissions.UserStateKeeper, site string) WebHandle {
 	return func(ctx *web.Context, val string) string {
 
 		// Password checks
@@ -228,7 +228,7 @@ func GenerateRegisterUser(state *permissions.UserState, site string) WebHandle {
 }
 
 // Log out a user by changing the loggedin value
-func GenerateLogoutCurrentUser(state *permissions.UserState) SimpleContextHandle {
+func GenerateLogoutCurrentUser(state permissions.UserStateKeeper) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		username := state.Username(ctx.Request)
 		if username == "" {
@@ -253,7 +253,7 @@ func GenerateNoJavascriptMessage() SimpleContextHandle {
 	}
 }
 
-func LoginCP(basecp BaseCP, state *permissions.UserState, url string) *ContentPage {
+func LoginCP(basecp BaseCP, state permissions.UserStateKeeper, url string) *ContentPage {
 	cp := basecp(state)
 	cp.ContentTitle = "Login"
 	cp.ContentHTML = instapage.LoginForm()
@@ -268,7 +268,7 @@ func LoginCP(basecp BaseCP, state *permissions.UserState, url string) *ContentPa
 	return cp
 }
 
-func RegisterCP(basecp BaseCP, state *permissions.UserState, url string) *ContentPage {
+func RegisterCP(basecp BaseCP, state permissions.UserStateKeeper, url string) *ContentPage {
 	cp := basecp(state)
 	cp.ContentTitle = "Register"
 	cp.ContentHTML = instapage.RegisterForm()
