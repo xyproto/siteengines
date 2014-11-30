@@ -18,7 +18,7 @@ type UnderskogEngine struct {
 	state permissions.UserStateKeeper
 }
 
-func NewUnderskogEngine(state *permissions.UserState) *UnderskogEngine {
+func NewUnderskogEngine(state permissions.UserStateKeeper) *UnderskogEngine {
 	return &UnderskogEngine{state.Pool(), state}
 }
 
