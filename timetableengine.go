@@ -7,7 +7,6 @@ import (
 
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/instapage"
 	"github.com/xyproto/moskus"
 	"github.com/xyproto/permissions2"
 	"github.com/xyproto/personplan"
@@ -195,7 +194,7 @@ func (we *TimeTableEngine) GenerateShowTimeTable() WebHandle {
 		weekstart := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 
 		retval += RenderWeekFrom(weekstart, "nb_NO")
-		retval += instapage.BackButton()
+		retval += BackButton()
 		return retval
 	}
 }

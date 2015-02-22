@@ -2,7 +2,6 @@ package siteengines
 
 import (
 	"github.com/hoisie/web"
-	"github.com/xyproto/instapage"
 	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
@@ -53,7 +52,7 @@ func (ie *IPEngine) GenerateGetAllIPs() WebHandle {
 				s += "IP: " + val + "<br />"
 			}
 		}
-		return instapage.Message("IPs", s)
+		return Message("IPs", s)
 	}
 }
 

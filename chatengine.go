@@ -6,7 +6,6 @@ import (
 
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/instapage"
 	. "github.com/xyproto/onthefly"
 	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
@@ -346,11 +345,11 @@ func (ce *ChatEngine) GenerateSetChatLinesCurrentUser() SimpleContextHandle {
 		}
 		lines, found := ctx.Params["lines"]
 		if !found || lines == "" {
-			return instapage.MessageOKback("Set chat lines", "Missing value for preferred number of lines")
+			return MessageOKback("Set chat lines", "Missing value for preferred number of lines")
 		}
 		num, err := strconv.Atoi(lines)
 		if err != nil {
-			return instapage.MessageOKback("Set chat lines", "Invalid number of lines: "+lines)
+			return MessageOKback("Set chat lines", "Invalid number of lines: "+lines)
 		}
 
 		// Set the preferred number of lines for this user

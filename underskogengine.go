@@ -5,7 +5,6 @@ package siteengines
 import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/instapage"
 	"github.com/xyproto/permissions2"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
@@ -39,7 +38,7 @@ func (ue *UnderskogEngine) GenerateMessages() WebHandle {
 	return func(ctx *web.Context, userdate string) string {
 		retval := ""
 		retval += "<h1>MESSAGES</h1>"
-		retval += instapage.BackButton()
+		retval += BackButton()
 		return retval
 	}
 }

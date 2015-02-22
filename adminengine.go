@@ -5,7 +5,6 @@ import (
 
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/instapage"
 	"github.com/xyproto/permissions2"
 	"github.com/xyproto/symbolhash"
 	. "github.com/xyproto/webhandle"
@@ -66,7 +65,7 @@ func GenerateAdminStatus(state permissions.UserStateKeeper) SimpleContextHandle 
 				s += TableCell(state.IsLoggedIn(username))
 				s += TableCell(state.IsAdmin(username))
 				s += "<td><a class=\"darkgrey\" href=\"/admintoggle/" + username + "\">admin toggle</a></td>"
-				// TODO: Ask for confirmation first with a instapage.MessageOKurl("blabla", "blabla", "/actually/remove/stuff")
+				// TODO: Ask for confirmation first with a MessageOKurl("blabla", "blabla", "/actually/remove/stuff")
 				s += "<td><a class=\"careful\" href=\"/remove/" + username + "\">remove</a></td>"
 				email, err := state.Email(username)
 				if err == nil {
@@ -113,30 +112,30 @@ func GenerateAdminStatus(state permissions.UserStateKeeper) SimpleContextHandle 
 func GenerateStatusCurrentUser(state permissions.UserStateKeeper) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
-			return instapage.MessageOKback("Status", "Not logged in as Administrator")
+			return MessageOKback("Status", "Not logged in as Administrator")
 		}
 		username := state.Username(ctx.Request)
 		if username == "" {
-			return instapage.MessageOKback("Current user status", "No user logged in")
+			return MessageOKback("Current user status", "No user logged in")
 		}
 		hasUser := state.HasUser(username)
 		if !hasUser {
-			return instapage.MessageOKback("Current user status", username+" does not exist")
+			return MessageOKback("Current user status", username+" does not exist")
 		}
 		if !(state.IsLoggedIn(username)) {
-			return instapage.MessageOKback("Current user status", "User "+username+" is not logged in")
+			return MessageOKback("Current user status", "User "+username+" is not logged in")
 		}
-		return instapage.MessageOKback("Current user status", "User "+username+" is logged in")
+		return MessageOKback("Current user status", "User "+username+" is logged in")
 	}
 }
 
 func GenerateStatusUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if username == "" {
-			return instapage.MessageOKback("Status", "No username given")
+			return MessageOKback("Status", "No username given")
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Status", username+" does not exist")
+			return MessageOKback("Status", username+" does not exist")
 		}
 		loggedinStatus := "not logged in"
 		if state.IsLoggedIn(username) {
@@ -146,7 +145,7 @@ func GenerateStatusUser(state permissions.UserStateKeeper) WebHandle {
 		if state.IsConfirmed(username) {
 			confirmStatus = "email has been confirmed"
 		}
-		return instapage.MessageOKback("Status", username+" is "+loggedinStatus+" and "+confirmStatus)
+		return MessageOKback("Status", username+" is "+loggedinStatus+" and "+confirmStatus)
 	}
 }
 
@@ -154,11 +153,11 @@ func GenerateStatusUser(state permissions.UserStateKeeper) WebHandle {
 func GenerateRemoveUnconfirmedUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
-			return instapage.MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
+			return MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
 		}
 
 		if username == "" {
-			return instapage.MessageOKback("Remove unconfirmed user", "Can't remove blank user.")
+			return MessageOKback("Remove unconfirmed user", "Can't remove blank user.")
 		}
 
 		found := false
@@ -173,13 +172,13 @@ func GenerateRemoveUnconfirmedUser(state permissions.UserStateKeeper) WebHandle 
 		}
 
 		if !found {
-			return instapage.MessageOKback("Remove unconfirmed user", "Can't find "+username+" in the list of unconfirmed users.")
+			return MessageOKback("Remove unconfirmed user", "Can't find "+username+" in the list of unconfirmed users.")
 		}
 
 		// Mark as confirmed
 		state.RemoveUnconfirmed(username)
 
-		return instapage.MessageOKurl("Remove unconfirmed user", "OK, removed "+username+" from the list of unconfirmed users.", "/admin")
+		return MessageOKurl("Remove unconfirmed user", "OK, removed "+username+" from the list of unconfirmed users.", "/admin")
 	}
 }
 
@@ -190,27 +189,27 @@ func GenerateRemoveUnconfirmedUser(state permissions.UserStateKeeper) WebHandle 
 func GenerateRemoveUser(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
-			return instapage.MessageOKback("Remove user", "Not logged in as Administrator")
+			return MessageOKback("Remove user", "Not logged in as Administrator")
 		}
 
 		if username == "" {
-			return instapage.MessageOKback("Remove user", "Can't remove blank user")
+			return MessageOKback("Remove user", "Can't remove blank user")
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Remove user", username+" doesn't exists, could not remove")
+			return MessageOKback("Remove user", username+" doesn't exists, could not remove")
 		}
 
 		// Remove the user
 		state.RemoveUser(username)
 
-		return instapage.MessageOKurl("Remove user", "OK, removed "+username, "/admin")
+		return MessageOKurl("Remove user", "OK, removed "+username, "/admin")
 	}
 }
 
 func GenerateAllUsernames(state permissions.UserStateKeeper) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
-			return instapage.MessageOKback("List usernames", "Not logged in as Administrator")
+			return MessageOKback("List usernames", "Not logged in as Administrator")
 		}
 		s := ""
 		usernames, err := state.AllUsernames()
@@ -219,31 +218,31 @@ func GenerateAllUsernames(state permissions.UserStateKeeper) SimpleContextHandle
 				s += username + "<br />"
 			}
 		}
-		return instapage.MessageOKback("Usernames", s)
+		return MessageOKback("Usernames", s)
 	}
 }
 
 func GenerateToggleAdmin(state permissions.UserStateKeeper) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
-			return instapage.MessageOKback("Admin toggle", "Not logged in as Administrator")
+			return MessageOKback("Admin toggle", "Not logged in as Administrator")
 		}
 		if username == "" {
-			return instapage.MessageOKback("Admin toggle", "Can't set toggle empty username")
+			return MessageOKback("Admin toggle", "Can't set toggle empty username")
 		}
 		if !state.HasUser(username) {
-			return instapage.MessageOKback("Admin toggle", "Can't toggle non-existing user")
+			return MessageOKback("Admin toggle", "Can't toggle non-existing user")
 		}
 		// A special case
 		if username == "admin" {
-			return instapage.MessageOKback("Admin toggle", "Can't remove admin rights from the admin user")
+			return MessageOKback("Admin toggle", "Can't remove admin rights from the admin user")
 		}
 		if !state.IsAdmin(username) {
 			state.SetAdminStatus(username)
-			return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now an admin", "/admin")
+			return MessageOKurl("Admin toggle", "OK, "+username+" is now an admin", "/admin")
 		}
 		state.RemoveAdminStatus(username)
-		return instapage.MessageOKurl("Admin toggle", "OK, "+username+" is now a regular user", "/admin")
+		return MessageOKurl("Admin toggle", "OK, "+username+" is now a regular user", "/admin")
 	}
 }
 
