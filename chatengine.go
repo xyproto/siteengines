@@ -139,7 +139,7 @@ func (ce *ChatEngine) IsChatting(username string) bool {
 			}
 		}
 	}
-	// TODO: If the user was last seen more than N minutes ago, set as not chatting and return false
+	// TODO: Just return true instead of retrieving the data
 	return ce.state.BooleanField(username, "chatting")
 }
 
