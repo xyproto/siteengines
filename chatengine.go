@@ -7,7 +7,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions2"
+	"github.com/xyproto/pinterface"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -16,7 +16,7 @@ import (
 // This part handles the "chat" pages
 
 type ChatEngine struct {
-	state     permissions.UserStateKeeper
+	state     pinterface.IUserState
 	chatState *ChatState
 }
 
@@ -27,7 +27,7 @@ type ChatState struct {
 	pool     *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewChatEngine(userState permissions.UserStateKeeper) *ChatEngine {
+func NewChatEngine(userState pinterface.IUserState) *ChatEngine {
 	pool := userState.Pool()
 	dbindex := userState.DatabaseIndex()
 

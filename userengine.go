@@ -14,7 +14,7 @@ import (
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions2"
+	"github.com/xyproto/pinterface"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -22,10 +22,10 @@ import (
 // This part handles the login/logout/registration/confirmation pages
 
 type UserEngine struct {
-	state permissions.UserStateKeeper
+	state pinterface.IUserState
 }
 
-func NewUserEngine(userState permissions.UserStateKeeper) *UserEngine {
+func NewUserEngine(userState pinterface.IUserState) *UserEngine {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
@@ -36,12 +36,12 @@ func NewUserEngine(userState permissions.UserStateKeeper) *UserEngine {
 	return &UserEngine{userState}
 }
 
-func (ue *UserEngine) GetState() permissions.UserStateKeeper {
+func (ue *UserEngine) GetState() pinterface.IUserState {
 	return ue.state
 }
 
 // Create a user by adding the username to the list of usernames
-func GenerateConfirmUser(state permissions.UserStateKeeper) WebHandle {
+func GenerateConfirmUser(state pinterface.IUserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		confirmationCode := val
 
@@ -86,7 +86,7 @@ func GenerateConfirmUser(state permissions.UserStateKeeper) WebHandle {
 }
 
 // Log in a user by changing the loggedin value
-func GenerateLoginUser(state permissions.UserStateKeeper) WebHandle {
+func GenerateLoginUser(state pinterface.IUserState) WebHandle {
 	return func(ctx *web.Context, val string) string {
 		// Fetch password from ctx
 		password, found := ctx.Params["password"]
@@ -139,7 +139,7 @@ func GenerateLoginUser(state permissions.UserStateKeeper) WebHandle {
 // TODO: Rate limiting, maximum rate per minute or day
 
 // Register a new user, site is ie. "archlinux.no"
-func GenerateRegisterUser(state permissions.UserStateKeeper, site string) WebHandle {
+func GenerateRegisterUser(state pinterface.IUserState, site string) WebHandle {
 	return func(ctx *web.Context, val string) string {
 
 		// Password checks
@@ -227,7 +227,7 @@ func GenerateRegisterUser(state permissions.UserStateKeeper, site string) WebHan
 }
 
 // Log out a user by changing the loggedin value
-func GenerateLogoutCurrentUser(state permissions.UserStateKeeper) SimpleContextHandle {
+func GenerateLogoutCurrentUser(state pinterface.IUserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		username := state.Username(ctx.Request)
 		if username == "" {
@@ -252,7 +252,7 @@ func GenerateNoJavascriptMessage() SimpleContextHandle {
 	}
 }
 
-func LoginCP(basecp BaseCP, state permissions.UserStateKeeper, url string) *ContentPage {
+func LoginCP(basecp BaseCP, state pinterface.IUserState, url string) *ContentPage {
 	cp := basecp(state)
 	cp.ContentTitle = "Login"
 	cp.ContentHTML = LoginForm()
@@ -267,7 +267,7 @@ func LoginCP(basecp BaseCP, state permissions.UserStateKeeper, url string) *Cont
 	return cp
 }
 
-func RegisterCP(basecp BaseCP, state permissions.UserStateKeeper, url string) *ContentPage {
+func RegisterCP(basecp BaseCP, state pinterface.IUserState, url string) *ContentPage {
 	cp := basecp(state)
 	cp.ContentTitle = "Register"
 	cp.ContentHTML = RegisterForm()

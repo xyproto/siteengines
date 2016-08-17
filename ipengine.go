@@ -2,17 +2,17 @@ package siteengines
 
 import (
 	"github.com/hoisie/web"
-	"github.com/xyproto/permissions2"
+	"github.com/xyproto/pinterface"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
 type IPEngine struct {
-	state permissions.UserStateKeeper
+	state pinterface.IUserState
 	data  *simpleredis.List
 }
 
-func NewIPEngine(state permissions.UserStateKeeper) *IPEngine {
+func NewIPEngine(state pinterface.IUserState) *IPEngine {
 
 	// Create a RedisList for storing IP adresses
 	ips := simpleredis.NewList(state.Pool(), "IPs")

@@ -5,7 +5,7 @@ import (
 
 	"github.com/hoisie/web"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/permissions2"
+	"github.com/xyproto/pinterface"
 	"github.com/xyproto/symbolhash"
 	. "github.com/xyproto/webhandle"
 )
@@ -13,10 +13,10 @@ import (
 // This part handles the "admin" pages
 
 type AdminEngine struct {
-	state permissions.UserStateKeeper
+	state pinterface.IUserState
 }
 
-func NewAdminEngine(state permissions.UserStateKeeper) *AdminEngine {
+func NewAdminEngine(state pinterface.IUserState) *AdminEngine {
 	return &AdminEngine{state}
 }
 
@@ -38,7 +38,7 @@ func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
 
 // TODO: Log and graph when people visit pages and when people contribute content
 // This one is wrapped by ServeAdminPages
-func GenerateAdminStatus(state permissions.UserStateKeeper) SimpleContextHandle {
+func GenerateAdminStatus(state pinterface.IUserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
 			return "<div class=\"no\">Not logged in as Administrator</div>"
@@ -109,7 +109,7 @@ func GenerateAdminStatus(state permissions.UserStateKeeper) SimpleContextHandle 
 	}
 }
 
-func GenerateStatusCurrentUser(state permissions.UserStateKeeper) SimpleContextHandle {
+func GenerateStatusCurrentUser(state pinterface.IUserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
 			return MessageOKback("Status", "Not logged in as Administrator")
@@ -129,7 +129,7 @@ func GenerateStatusCurrentUser(state permissions.UserStateKeeper) SimpleContextH
 	}
 }
 
-func GenerateStatusUser(state permissions.UserStateKeeper) WebHandle {
+func GenerateStatusUser(state pinterface.IUserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if username == "" {
 			return MessageOKback("Status", "No username given")
@@ -150,7 +150,7 @@ func GenerateStatusUser(state permissions.UserStateKeeper) WebHandle {
 }
 
 // Remove an unconfirmed user
-func GenerateRemoveUnconfirmedUser(state permissions.UserStateKeeper) WebHandle {
+func GenerateRemoveUnconfirmedUser(state pinterface.IUserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return MessageOKback("Remove unconfirmed user", "Not logged in as Administrator")
@@ -186,7 +186,7 @@ func GenerateRemoveUnconfirmedUser(state permissions.UserStateKeeper) WebHandle 
 
 // TODO: Undo for removing users
 // Remove a user
-func GenerateRemoveUser(state permissions.UserStateKeeper) WebHandle {
+func GenerateRemoveUser(state pinterface.IUserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return MessageOKback("Remove user", "Not logged in as Administrator")
@@ -206,7 +206,7 @@ func GenerateRemoveUser(state permissions.UserStateKeeper) WebHandle {
 	}
 }
 
-func GenerateAllUsernames(state permissions.UserStateKeeper) SimpleContextHandle {
+func GenerateAllUsernames(state pinterface.IUserState) SimpleContextHandle {
 	return func(ctx *web.Context) string {
 		if !state.AdminRights(ctx.Request) {
 			return MessageOKback("List usernames", "Not logged in as Administrator")
@@ -222,7 +222,7 @@ func GenerateAllUsernames(state permissions.UserStateKeeper) SimpleContextHandle
 	}
 }
 
-func GenerateToggleAdmin(state permissions.UserStateKeeper) WebHandle {
+func GenerateToggleAdmin(state pinterface.IUserState) WebHandle {
 	return func(ctx *web.Context, username string) string {
 		if !state.AdminRights(ctx.Request) {
 			return MessageOKback("Admin toggle", "Not logged in as Administrator")

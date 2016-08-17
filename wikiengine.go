@@ -8,7 +8,7 @@ import (
 	"github.com/russross/blackfriday"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
-	"github.com/xyproto/permissions2"
+	"github.com/xyproto/pinterface"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -21,7 +21,7 @@ import (
 // TODO: Add the wiki pages to the search engine somehow (and the other engines too, like the chat)
 
 type WikiEngine struct {
-	state     permissions.UserStateKeeper
+	state     pinterface.IUserState
 	wikiState *WikiState
 }
 
@@ -37,7 +37,7 @@ var (
 	}
 )
 
-func NewWikiEngine(state permissions.UserStateKeeper) *WikiEngine {
+func NewWikiEngine(state pinterface.IUserState) *WikiEngine {
 	pool := state.Pool()
 
 	wikiState := new(WikiState)

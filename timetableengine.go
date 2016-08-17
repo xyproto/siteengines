@@ -8,8 +8,8 @@ import (
 	"github.com/hoisie/web"
 	"github.com/xyproto/calendar"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/permissions2"
 	"github.com/xyproto/personplan"
+	"github.com/xyproto/pinterface"
 	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
@@ -38,7 +38,7 @@ import (
  */
 
 type TimeTableEngine struct {
-	state          permissions.UserStateKeeper
+	state          pinterface.IUserState
 	timeTableState *TimeTableState
 }
 
@@ -49,7 +49,7 @@ type TimeTableState struct {
 	pool *simpleredis.ConnectionPool // A connection pool for Redis
 }
 
-func NewTimeTableEngine(state permissions.UserStateKeeper) *TimeTableEngine {
+func NewTimeTableEngine(state pinterface.IUserState) *TimeTableEngine {
 	pool := state.Pool()
 	timeTableState := new(TimeTableState)
 
