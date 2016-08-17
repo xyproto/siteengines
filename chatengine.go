@@ -8,7 +8,6 @@ import (
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
 	"github.com/xyproto/pinterface"
-	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -21,10 +20,10 @@ type ChatEngine struct {
 }
 
 type ChatState struct {
-	active   *simpleredis.Set            // A list of all users that are in the chat, must correspond to the users in permissions.UserState.users
-	said     *simpleredis.List           // A list of everything that has been said so far
-	userInfo *simpleredis.HashMap        // Info about a chat user - last seen, preferred number of lines etc
-	pool     *simpleredis.ConnectionPool // A connection pool for Redis
+	active   *pinterface.Set            // A list of all users that are in the chat, must correspond to the users in permissions.UserState.users
+	said     *pinterface.List           // A list of everything that has been said so far
+	userInfo *pinterface.HashMap        // Info about a chat user - last seen, preferred number of lines etc
+	pool     *pinterface.ConnectionPool // A connection pool for Redis
 }
 
 func NewChatEngine(userState pinterface.IUserState) *ChatEngine {
@@ -33,13 +32,13 @@ func NewChatEngine(userState pinterface.IUserState) *ChatEngine {
 
 	chatState := new(ChatState)
 
-	chatState.active = simpleredis.NewSet(pool, "active")
+	chatState.active = pinterface.NewSet(pool, "active")
 	chatState.active.SelectDatabase(dbindex)
 
-	chatState.said = simpleredis.NewList(pool, "said")
+	chatState.said = pinterface.NewList(pool, "said")
 	chatState.said.SelectDatabase(dbindex)
 
-	chatState.userInfo = simpleredis.NewHashMap(pool, "userInfo") // lastSeen.time is an encoded timestamp for when the user was last seen chatting
+	chatState.userInfo = pinterface.NewHashMap(pool, "userInfo") // lastSeen.time is an encoded timestamp for when the user was last seen chatting
 	chatState.userInfo.SelectDatabase(dbindex)
 
 	chatState.pool = pool
