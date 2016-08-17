@@ -1,6 +1,10 @@
 siteengines
 ===========
 
+# WORK IN PROGRESS,
+
+currently does not build
+
 Collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
 
 This package is under development, and likely to change in the future.
