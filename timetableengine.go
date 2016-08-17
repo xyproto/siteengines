@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/hoisie/web"
+	"github.com/xyproto/calendar"
 	. "github.com/xyproto/genericsite"
-	"github.com/xyproto/moskus"
 	"github.com/xyproto/permissions2"
 	"github.com/xyproto/personplan"
 	"github.com/xyproto/simpleredis"
@@ -17,7 +17,7 @@ import (
 // TODO: Simple font-symbol buttons for browsing backwards and forwards a day (or week): << < > >>
 
 // TODO: Rename this module to something more generic than TimeTable
-// TODO: Use the personplan and moskus module
+// TODO: Use the personplan and calendar module
 // TODO: Add the timeTable pages to the search engine somehow (and the other engines too, like the chat)
 
 /* Structure (TODO: Look at personplan for how the structure ended up)
@@ -97,7 +97,7 @@ func RenderWeekFrom(t time.Time, locale string) string {
 
 	allPlans := AllPlansDummyContent()
 
-	cal, err := moskus.NewCalendar(locale, true)
+	cal, err := calendar.NewCalendar(locale, true)
 	if err != nil {
 		panic("Could not create a calendar for locale " + locale + "!")
 	}
