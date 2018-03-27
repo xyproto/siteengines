@@ -10,7 +10,6 @@ import (
 	. "github.com/xyproto/genericsite"
 	"github.com/xyproto/personplan"
 	"github.com/xyproto/pinterface"
-	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -43,21 +42,22 @@ type TimeTableEngine struct {
 }
 
 type TimeTableState struct {
-	// TODO: Find out how you are going to store the plans in Redis
-	plans *simpleredis.HashMap
+	// TODO: Find out how you are going to store the plans
 
-	pool *simpleredis.ConnectionPool // A connection pool for Redis
+	plans pinterface.IHashMap
 }
 
-func NewTimeTableEngine(state pinterface.IUserState) *TimeTableEngine {
-	pool := state.Pool()
+func NewTimeTableEngine(userState pinterface.IUserState) (*TimeTableEngine, error) {
+
+	creator := userState.Creator()
+
 	timeTableState := new(TimeTableState)
-
-	timeTableState.plans = simpleredis.NewHashMap(pool, "plans")
-	timeTableState.plans.SelectDatabase(state.DatabaseIndex())
-
-	timeTableState.pool = pool
-	return &TimeTableEngine{state, timeTableState}
+	if plansHashMap, err := creator.NewHashMap("plans"); err != nil {
+		return nil, err
+	} else {
+		timeTableState.plans = plansHashMap
+		return &TimeTableEngine{userState, timeTableState}, nil
+	}
 }
 
 func (tte *TimeTableEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {

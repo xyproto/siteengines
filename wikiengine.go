@@ -9,7 +9,6 @@ import (
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
 	"github.com/xyproto/pinterface"
-	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
@@ -26,8 +25,7 @@ type WikiEngine struct {
 }
 
 type WikiState struct {
-	pages *simpleredis.HashMap        // All the pages
-	pool  *simpleredis.ConnectionPool // A connection pool for Redis
+	pages pinterface.IHashMap // All the pages
 }
 
 var (
@@ -37,15 +35,17 @@ var (
 	}
 )
 
-func NewWikiEngine(state pinterface.IUserState) *WikiEngine {
-	pool := state.Pool()
+func NewWikiEngine(userState pinterface.IUserState) (*WikiEngine, error) {
+	creator := userState.Creator()
 
 	wikiState := new(WikiState)
-	wikiState.pages = simpleredis.NewHashMap(pool, "pages")
-	wikiState.pages.SelectDatabase(state.DatabaseIndex())
-	wikiState.pool = pool
+	if pagesHashMap, err := creator.NewHashMap("pages"); err != nil {
+		return nil, err
+	} else {
+		wikiState.pages = pagesHashMap
+	}
 
-	return &WikiEngine{state, wikiState}
+	return &WikiEngine{userState, wikiState}, nil
 }
 
 func (we *WikiEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {

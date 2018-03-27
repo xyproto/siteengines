@@ -15,34 +15,41 @@ import (
 // This part handles the "chat" pages
 
 type ChatEngine struct {
-	state     pinterface.IUserState
 	chatState *ChatState
+	state     pinterface.IUserState
 }
 
 type ChatState struct {
-	active   *pinterface.Set            // A list of all users that are in the chat, must correspond to the users in permissions.UserState.users
-	said     *pinterface.List           // A list of everything that has been said so far
-	userInfo *pinterface.HashMap        // Info about a chat user - last seen, preferred number of lines etc
-	pool     *pinterface.ConnectionPool // A connection pool for Redis
+	active   pinterface.ISet     // A list of all users that are in the chat, must correspond to the users in permissions.UserState.users
+	said     pinterface.IList    // A list of everything that has been said so far
+	userInfo pinterface.IHashMap // Info about a chat user - last seen, preferred number of lines etc
+	host     pinterface.IHost    // A host
 }
 
-func NewChatEngine(userState pinterface.IUserState) *ChatEngine {
-	pool := userState.Pool()
-	dbindex := userState.DatabaseIndex()
-
+func NewChatEngine(userState pinterface.IUserState) (*ChatEngine, error) {
 	chatState := new(ChatState)
 
-	chatState.active = pinterface.NewSet(pool, "active")
-	chatState.active.SelectDatabase(dbindex)
+	creator := userState.Creator()
 
-	chatState.said = pinterface.NewList(pool, "said")
-	chatState.said.SelectDatabase(dbindex)
+	if activeSet, err := creator.NewSet("active"); err != nil {
+		return nil, err
+	} else {
+		chatState.active = activeSet
+	}
 
-	chatState.userInfo = pinterface.NewHashMap(pool, "userInfo") // lastSeen.time is an encoded timestamp for when the user was last seen chatting
-	chatState.userInfo.SelectDatabase(dbindex)
+	if saidList, err := creator.NewList("said"); err != nil {
+		return nil, err
+	} else {
+		chatState.said = saidList
+	}
 
-	chatState.pool = pool
-	return &ChatEngine{userState, chatState}
+	if userInfoHashMap, err := creator.NewHashMap("userInfo"); err != nil {
+		return nil, err
+	} else {
+		chatState.userInfo = userInfoHashMap
+	}
+
+	return &ChatEngine{chatState, userState}, nil
 }
 
 func (ce *ChatEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {

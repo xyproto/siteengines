@@ -1,22 +1,43 @@
 package siteengines
 
-// TODO: Move the function that adds a confirmation code for a user to the permissions package.
-// TODO: Check for the visual likeness of two usernames when checking for availability! Generate images and compare pixels.
-// TODO: Logging in should work case sensitively, or at least without concern for the case of the first letter
-// TODO: Consider using "0" and "1" instead of "true" or "false" when setting values, while still understanding "true" or "false"
-// TODO: The password should be set at confirmation time instead of registration-time in order to make the process clearer and pave the way for invite-only?
-
 import (
+	"errors"
 	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/hoisie/web"
+	"github.com/xyproto/cookie"
 	. "github.com/xyproto/genericsite"
 	. "github.com/xyproto/onthefly"
 	"github.com/xyproto/pinterface"
 	. "github.com/xyproto/webhandle"
 )
+
+var (
+	charErr  = errors.New("Only letters, numbers and underscore are allowed in usernames.")
+	equalErr = errors.New("Username and password must be different, try another password.")
+)
+
+// Check that the given username and password are different.
+// Also check if the chosen username only contains letters, numbers and/or underscore.
+// Use the "CorrectPassword" function for checking if the password is correct.
+func ValidUsernamePassword(username, password string) error {
+	const allAllowedLetters = "abcdefghijklmnopqrstuvwxyzæøåABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ_0123456789"
+NEXT:
+	for _, letter := range username {
+		for _, allowedLetter := range allAllowedLetters {
+			if letter == allowedLetter {
+				continue NEXT // check the next letter in the username
+			}
+		}
+		return charErr
+	}
+	if username == password {
+		return equalErr
+	}
+	return nil
+}
 
 // An Engine is a specific piece of a website
 // This part handles the login/logout/registration/confirmation pages
@@ -29,7 +50,7 @@ func NewUserEngine(userState pinterface.IUserState) *UserEngine {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
-	web.Config.CookieSecret = permissions.RandomCookieFriendlyString(30)
+	web.Config.CookieSecret = cookie.RandomCookieFriendlyString(30)
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -178,7 +199,7 @@ func GenerateRegisterUser(state pinterface.IUserState, site string) WebHandle {
 		}
 
 		// Only some letters are allowed in the username
-		err := permissions.ValidUsernamePassword(username, password1)
+		err := ValidUsernamePassword(username, password1)
 		if err != nil {
 			return MessageOKback("Register", err.Error())
 		}

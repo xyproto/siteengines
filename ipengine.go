@@ -3,25 +3,27 @@ package siteengines
 import (
 	"github.com/hoisie/web"
 	"github.com/xyproto/pinterface"
-	"github.com/xyproto/simpleredis"
 	. "github.com/xyproto/webhandle"
 )
 
 type IPEngine struct {
 	state pinterface.IUserState
-	data  *simpleredis.List
+	data  pinterface.IList
 }
 
-func NewIPEngine(state pinterface.IUserState) *IPEngine {
+func NewIPEngine(userState pinterface.IUserState) (*IPEngine, error) {
+
+	creator := userState.Creator()
 
 	// Create a RedisList for storing IP adresses
-	ips := simpleredis.NewList(state.Pool(), "IPs")
-
-	ipEngine := new(IPEngine)
-	ipEngine.data = ips
-	ipEngine.state = state
-
-	return ipEngine
+	if ips, err := creator.NewList("IPs"); err != nil {
+		return nil, err
+	} else {
+		ipEngine := new(IPEngine)
+		ipEngine.state = userState
+		ipEngine.data = ips
+		return ipEngine, nil
+	}
 }
 
 // Set an IP adress and generate a confirmation page for it
