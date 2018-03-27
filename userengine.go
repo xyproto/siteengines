@@ -46,7 +46,7 @@ type UserEngine struct {
 	state pinterface.IUserState
 }
 
-func NewUserEngine(userState pinterface.IUserState) *UserEngine {
+func NewUserEngine(userState pinterface.IUserState) (*UserEngine, error) {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
@@ -54,7 +54,7 @@ func NewUserEngine(userState pinterface.IUserState) *UserEngine {
 
 	rand.Seed(time.Now().UnixNano())
 
-	return &UserEngine{userState}
+	return &UserEngine{userState}, nil
 }
 
 func (ue *UserEngine) GetState() pinterface.IUserState {

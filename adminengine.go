@@ -16,8 +16,8 @@ type AdminEngine struct {
 	state pinterface.IUserState
 }
 
-func NewAdminEngine(state pinterface.IUserState) *AdminEngine {
-	return &AdminEngine{state}
+func NewAdminEngine(state pinterface.IUserState) (*AdminEngine, error) {
+	return &AdminEngine{state}, nil
 }
 
 func (ae *AdminEngine) ServePages(basecp BaseCP, menuEntries MenuEntries) {
