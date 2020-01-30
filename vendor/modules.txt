@@ -1,0 +1,47 @@
+# github.com/drbawb/mustache v0.0.0-20130930130810-b035beeed55a
+github.com/drbawb/mustache
+# github.com/gomodule/redigo v2.0.0+incompatible
+github.com/gomodule/redigo/internal
+github.com/gomodule/redigo/redis
+# github.com/gorilla/mux v1.7.3
+github.com/gorilla/mux
+# github.com/hoisie/web v0.1.1-0.20160809141353-a498c022b2c0
+github.com/hoisie/web
+# github.com/russross/blackfriday v2.0.0+incompatible
+github.com/russross/blackfriday
+# github.com/shurcooL/sanitized_anchor_name v1.0.0
+github.com/shurcooL/sanitized_anchor_name
+# github.com/xyproto/calendar v0.0.0-20200121121400-e88fa386e812
+github.com/xyproto/calendar
+# github.com/xyproto/cookie v0.0.0-20181220103240-f4de411f45ff
+github.com/xyproto/cookie
+# github.com/xyproto/genericsite v0.0.0-20200129101041-ec379e643ff3
+github.com/xyproto/genericsite
+# github.com/xyproto/onthefly v0.0.0-20191101100742-c576f31faceb
+github.com/xyproto/onthefly
+# github.com/xyproto/permissions2 v0.0.0-20191218091146-b67b95e6d465
+github.com/xyproto/permissions2
+# github.com/xyproto/personplan v0.0.0-20180327134433-c524df9073e5
+github.com/xyproto/personplan
+# github.com/xyproto/pinterface v0.0.0-20181004125811-9710ef24b684
+github.com/xyproto/pinterface
+# github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a
+github.com/xyproto/randomstring
+# github.com/xyproto/simpleredis v0.0.0-20191007160910-58ebe44f9f85
+github.com/xyproto/simpleredis
+# github.com/xyproto/symbolhash v1.0.0
+github.com/xyproto/symbolhash
+# github.com/xyproto/tinysvg v0.0.0-20191101100520-ef4e4a2e5b89
+github.com/xyproto/tinysvg
+# github.com/xyproto/webhandle v0.0.0-20190619140133-f3254eb3bc41
+github.com/xyproto/webhandle
+# golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
+golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/ssh/terminal
+# golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa
+golang.org/x/net/websocket
+# golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9
+golang.org/x/sys/unix
+golang.org/x/sys/windows
