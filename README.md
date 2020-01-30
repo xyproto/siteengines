@@ -1,6 +1,8 @@
+# Work in progress, currently broken!
+
 # siteengines
 
-Work in progress collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
+A collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
 
 Features and limitations
 ------------------------
