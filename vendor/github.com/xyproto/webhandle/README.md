@@ -1,4 +1,4 @@
-#webhandle [![Build Status](https://travis-ci.org/xyproto/webhandle.svg?branch=master)](https://travis-ci.org/xyproto/webhandle) [![GoDoc](https://godoc.org/github.com/xyproto/webhandle?status.svg)](http://godoc.org/github.com/xyproto/webhandle)
+# webhandle [![Build Status](https://travis-ci.org/xyproto/webhandle.svg?branch=master)](https://travis-ci.org/xyproto/webhandle) [![GoDoc](https://godoc.org/github.com/xyproto/webhandle?status.svg)](http://godoc.org/github.com/xyproto/webhandle)
 
 One way to serve webpages with [onthefly](https://github.com/xyproto/onthefly) and [mux](https://github.com/gorilla/mux).
 
@@ -21,4 +21,3 @@ General information
 * Version: 0.1.1
 * License: MIT
 * Alexander F. Rødseth
-

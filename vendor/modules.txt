@@ -15,7 +15,7 @@ github.com/shurcooL/sanitized_anchor_name
 github.com/xyproto/calendar
 # github.com/xyproto/cookie v0.0.0-20181220103240-f4de411f45ff
 github.com/xyproto/cookie
-# github.com/xyproto/genericsite v0.0.0-20200129101041-ec379e643ff3
+# github.com/xyproto/genericsite v0.0.0-20200130083451-d09af6746e7c
 github.com/xyproto/genericsite
 # github.com/xyproto/onthefly v0.0.0-20191101100742-c576f31faceb
 github.com/xyproto/onthefly
@@ -33,7 +33,7 @@ github.com/xyproto/simpleredis
 github.com/xyproto/symbolhash
 # github.com/xyproto/tinysvg v0.0.0-20191101100520-ef4e4a2e5b89
 github.com/xyproto/tinysvg
-# github.com/xyproto/webhandle v0.0.0-20190619140133-f3254eb3bc41
+# github.com/xyproto/webhandle v0.0.0-20200130084443-601d541d9632
 github.com/xyproto/webhandle
 # golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
 golang.org/x/crypto/bcrypt

@@ -44,8 +44,8 @@ github.com/urfave/negroni v1.0.0/go.mod h1:Meg73S6kFm/4PpbYdq35yYWoCZ9mS/YSx+lKn
 github.com/xyproto/calendar v0.0.0-20200121121400-e88fa386e812 h1:I5s+gdhw0cF3BZofjJVHv2I9dxh/LMebaqIGMdP6ru8=
 github.com/xyproto/calendar v0.0.0-20200121121400-e88fa386e812/go.mod h1:L8eTO17oFuLrLhUx/YZPOd0yEzGf8oy1nZ9UNN/tDtw=
 github.com/xyproto/cookie v0.0.0-20181220103240-f4de411f45ff/go.mod h1:+c0/g8lVJKAi+uZ/kPHqSzf2UsSI2If03smY6xITgtM=
-github.com/xyproto/genericsite v0.0.0-20200129101041-ec379e643ff3 h1:crwqou6FD8Z/VAlBtX2I3LJpu27ivYFAG8xYvy/aOfY=
-github.com/xyproto/genericsite v0.0.0-20200129101041-ec379e643ff3/go.mod h1:PZefzp5UkBp1ckyZa3HVLcUQyCrquaO2W2TG0YK4tcw=
+github.com/xyproto/genericsite v0.0.0-20200130083451-d09af6746e7c h1:vU8HA64CKq691Ztwe2ljxSB6L0R1v7K10DZCEjbhbQw=
+github.com/xyproto/genericsite v0.0.0-20200130083451-d09af6746e7c/go.mod h1:PZefzp5UkBp1ckyZa3HVLcUQyCrquaO2W2TG0YK4tcw=
 github.com/xyproto/onthefly v0.0.0-20180903110516-0f923083607c/go.mod h1:27Ze41xYDqyB6lkTJIuHqnqq3blDaJwUIlRJOS+bK/E=
 github.com/xyproto/onthefly v0.0.0-20191101100742-c576f31faceb/go.mod h1:scb5WEY++WywOlfuXk/gLKRdcExPEEDxdob2r4HJ7kM=
 github.com/xyproto/permissions2 v0.0.0-20191218091146-b67b95e6d465 h1:w9Jq+wiEKG1dk8DK01x4AeWt7PeAlbvNY4eBy+M4etY=
@@ -60,6 +60,8 @@ github.com/xyproto/symbolhash v1.0.0 h1:1GSpPTc3G5f7uK11ejVNqxckxCMGMAiFVz3NbMTf
 github.com/xyproto/symbolhash v1.0.0/go.mod h1:T1Is8ddQSGJvQzW2fAxgraJf2vbwWNAQwJ5XAI+mIYo=
 github.com/xyproto/tinysvg v0.0.0-20191101100520-ef4e4a2e5b89/go.mod h1:OQfIWNs5Nhh2Mkq/pygdm0+4W9U21SgeXAO3ww1Ts/I=
 github.com/xyproto/webhandle v0.0.0-20190619140133-f3254eb3bc41/go.mod h1:7GhpQyoN5RfJ7iQ2mnkZmio9Ms2kNFGrOk+7Z77vA2Y=
+github.com/xyproto/webhandle v0.0.0-20200130084443-601d541d9632 h1:3+kALeAc5f9B+z72eYa0FltaCocNl9/IUBI1ZyVLpWo=
+github.com/xyproto/webhandle v0.0.0-20200130084443-601d541d9632/go.mod h1:fMwqZj/jSinLRRj/HYJv6Y6YyZjsSyQRVewxjXKhAhg=
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
