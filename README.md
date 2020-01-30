@@ -1,5 +1,4 @@
-siteengines
-===========
+# siteengines
 
 Work in progress collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
 
@@ -19,4 +18,4 @@ General information
 -------------------
 
 * License: MIT
-* Author: Alexander F Rødseth
+* Author: Alexander F. Rødseth
