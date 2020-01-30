@@ -1,15 +1,16 @@
-# Work in progress, currently broken!
+# DEPRECATED
 
-[![Build Status](https://travis-ci.com/xyproto/siteengines.svg?branch=master)](https://travis-ci.com/xyproto/siteengines)
+Currently does not build.
 
-# siteengines
+
+---
 
 A collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
 
-Features and limitations
-------------------------
+[![Build Status](https://travis-ci.com/xyproto/siteengines.svg?branch=master)](https://travis-ci.com/xyproto/siteengines)
 
-So far, there's:
+"Engines"
+---------
 
 * AJAX Chat
 * A simple wiki
