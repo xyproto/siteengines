@@ -1,5 +1,7 @@
 # Work in progress, currently broken!
 
+[![Build Status](https://travis-ci.com/xyproto/siteengines.svg?branch=master)](https://travis-ci.com/xyproto/siteengines)
+
 # siteengines
 
 A collections of "engines" for the [genericsite](https://github.com/xyproto/genericsite) web framework for Go.
